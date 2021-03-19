@@ -68,18 +68,14 @@ Blah
 \section{Results}\label{sec:results}
 %===================================================================
 
+\begin{figure}[h!]
 \newcounter{imagenum}
 \forloop{imagenum}{0}{\value{imagenum} < 17}{
     \includegraphics[width=0.24\textwidth]{../figures/scanning_plotsgaiascan_l101_2_b58_4_ra212_7_dec55_2_npy_\arabic{imagenum}.pdf}
 }
-
-\begin{figure}[h!]
-\centering
-\foreach \i in {0, 1, 2, ..., \MaxIndices}{%
-   \includegraphics[
-\includegraphics[width=0.5\textwidth]{../figures/scanning_plotsgaiascan_l101_2_b58_4_ra212_7_dec55_2_npy_\i.pdf}
 \caption{Region l$101.2$ b$58.4$ ra$212.7$ dec$55.2$}
 \end{figure}
+
 
 \begin{figure}[h!]
 \centering
