@@ -63,6 +63,12 @@ if __name__ == "__main__":
         sb_max = 0
         sr_min = -4.5
         sr_max = -1.7
+        
+    elif args.stream == "mock":
+        sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
+        sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
+        sr_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/4
+        sr_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/4
 
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
@@ -85,9 +91,7 @@ if __name__ == "__main__":
 
     ### Prepare datasets for training
     training_vars = ['μ_α','δ','α','color','mag']
-
-    # 70/15/15 train/validate/test split
-    train, validate, test = np.split(df_slice.sample(frac=1), [int(.7*len(df_slice)), int(.85*len(df_slice))])
+    train, validate, test = np.split(df_slice.sample(frac=1), [int(.7*len(df_slice)), int(.85*len(df_slice))]) # 70/15/15 train/validate/test split
 
     x_train, x_val, x_test = [train[training_vars], validate[training_vars], test[training_vars]]
     y_train, y_val, y_test = [train.label, validate.label, test.label]
@@ -102,6 +106,7 @@ if __name__ == "__main__":
     save_name = "best_weights"+args.stream
 
     model = Sequential()
+    
     if args.l2_reg == 0: 
         reg = None
     else:
