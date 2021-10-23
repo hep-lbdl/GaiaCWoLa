@@ -70,7 +70,7 @@ def load_file(stream = None, percent_bkg = 100):
     
     return df
 
-def visualize_stream(df, save_label=None):
+def visualize_stream(df, save_folder=None):
     plt.figure(figsize=(3,3), tight_layout=True) 
     plt.hist2d(df.α,df.δ,bins=100)
     if "stream" in df.keys():
@@ -78,9 +78,8 @@ def visualize_stream(df, save_label=None):
     plt.xlabel(r"$\alpha$ [\textdegree]")
     plt.ylabel(r"$\delta$ [\textdegree]");
 #     plt.legend();
-    if save_label is not None:
-        os.makedirs(os.path.join("./plots",save_label), exist_ok=True)
-        plt.savefig(os.path.join("./plots",save_label,"stream_position.png"))
+    if save_folder is not None:
+        plt.savefig(os.path.join(save_folder,"stream_position.png"))
     
     bins = np.linspace(-25,10,100)
     if "stream" in df.keys():
@@ -101,10 +100,10 @@ def visualize_stream(df, save_label=None):
         ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
         ax.set_title("Stream");
         
-    if save_label is not None:
-        plt.savefig(os.path.join("./plots",save_label,"stream_velocities.png"))
+    if save_folder is not None:
+        plt.savefig(os.path.join(save_folder,"stream_velocities.png"))
         
-def signal_sideband(df, stream, save_label):
+def signal_sideband(df, stream, save_folder=None):
     if stream == "gd1_tail":
         sb_min = -6
         sb_max = 0
@@ -127,8 +126,8 @@ def signal_sideband(df, stream, save_label):
     plt.legend(frameon=False)
     plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
     plt.ylabel("Counts")
-    if save_label is not None:
-        plt.savefig(os.path.join("./plots",save_label,"signal_sideband.png"))
+    if save_folder is not None:
+        plt.savefig(os.path.join(save_folder,"signal_sideband.png"))
 
     sr = df_slice[df_slice.label == 1]
     sb = df_slice[df_slice.label == 0]
@@ -138,7 +137,7 @@ def signal_sideband(df, stream, save_label):
     print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
     return df_slice
 
-def plot_results(test, save_label):
+def plot_results(test, save_folder=None):
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8,3), constrained_layout=True)
     bins=np.linspace(0,1,10)
 
@@ -163,8 +162,8 @@ def plot_results(test, save_label):
     ax.set_title("Test Set (15\% of full dataset)")
     ax.set_xlabel("NN Score", size=12)
     ax.set_ylabel("Events", size=12);
-    if save_label is not None: 
-        plt.savefig(os.path.join("./plots",save_label,"nn_scores.png"))
+    if save_folder is not None: 
+        plt.savefig(os.path.join(save_folder,"nn_scores.png"))
     
     ### Plot purities
     # Scan for optimal percentage
@@ -189,8 +188,8 @@ def plot_results(test, save_label):
     plt.plot(cuts, purities, label="Signal Purity")
     plt.xlabel("Top \% Stars, ranked by NN score")
     plt.legend()    
-    if save_label is not None: 
-        plt.savefig(os.path.join("./plots",save_label,"purities.png"))
+    if save_folder is not None: 
+        plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
     for x in [0.1, 1, 5, 10, 20]: # percentages
@@ -225,7 +224,7 @@ def plot_results(test, save_label):
         plt.ylim(-15,15)
         plt.xlabel(r"$\alpha$ [\textdegree]")
         plt.ylabel(r"$\delta$ [\textdegree]")
-        if save_label is not None: 
-            plt.savefig(os.path.join("./plots",save_label,"top_{}%_stars.png".format(x)))
+        if save_folder is not None: 
+            plt.savefig(os.path.join(save_folder,"top_{}%_stars.png".format(x)))
 
     
