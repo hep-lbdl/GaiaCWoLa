@@ -7,6 +7,7 @@ from matplotlib import gridspec
 from scipy import stats
 from glob import glob
 import argparse
+import json
 
 ### ML imports
 from keras.layers import Input, Dense, Dropout
@@ -55,6 +56,10 @@ if __name__ == "__main__":
     save_label = args.save_label
     save_folder = os.path.join("./trained_models",save_label)
     os.makedirs(save_folder, exist_ok=True)
+    
+    ### Save arguments
+    with open(os.path.join(save_folder,'args.txt'), 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
 
     ### Load file & preprocess
     df = load_file(stream = args.stream, percent_bkg = args.percent_bkg)
@@ -112,6 +117,10 @@ if __name__ == "__main__":
                                            save_best_only=True, 
                                            save_weights_only=True)
 
+    ### Save model architecture 
+    with open(os.path.join(save_folder,"model.json"), "w") as json_file:
+        json_file.write(model.to_json())
+    
     ### Train!
     history = model.fit(x_train, y_train, 
                         epochs=args.epochs, 
@@ -120,6 +129,21 @@ if __name__ == "__main__":
                         callbacks = [checkpoint,early_stopping],
                         verbose = 2,
                        )
+    
+    ### Save training losses & accuracies
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
+    ax = axs[0]
+    ax.plot(history.history["accuracy"], label="Training Accuracy")
+    ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
+    ax.set_title("Accuracy")
+    ax.set_xlabel("Epochs")
+
+    ax = axs[1]
+    ax.plot(history.history["loss"], label="Training Loss")
+    ax.plot(history.history["val_loss"], label="Validation Loss")
+    ax.set_title("Loss")
+    ax.set_xlabel("Epochs")
+    plt.savefig(os.path.join(save_folder,"loss_curves.png"))
     
     ### Load best weights
     model.load_weights(os.path.join(save_folder,"weights.h5"))
@@ -134,4 +158,4 @@ if __name__ == "__main__":
     plot_results(test, save_folder)
     
     ### Save test DataFrame for future plotting
-    test.to_hdf(os.path.join(save_folder,"df_test.h5"))
+    test.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")

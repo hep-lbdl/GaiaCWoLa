@@ -206,20 +206,20 @@ def plot_results(test, save_folder=None):
         print("Efficiency: {:.1f}%".format(100*n_perfect_matches/len(stream_stars_in_test_set)))
         print("Purity: {:.1f}%".format(n_perfect_matches/len(top_stars)*100))
 
-        plt.figure(figsize=(3,3), tight_layout=True) 
-        plt.suptitle('Top {:.1f}\% NN Scores'.format(x), y=0.9)
-        plt.title("Purity = {:.0f}\%".format(n_perfect_matches/len(top_stars)*100), fontsize=11)
+        plt.figure(figsize=(5,3), tight_layout=True) 
+        plt.title('Top {:.1f}\% NN Scores'.format(x))
+#         plt.title("Purity = {:.0f}\%".format(n_perfect_matches/len(top_stars)*100), fontsize=11)
         plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
                     color = "lightgray",
-                    label='GD1 Tail')
+                    label='Stream')
         plt.scatter(top_stars.α, top_stars.δ, marker='.', 
                     color = "lightpink",
-                    label="Top Stars")
+                    label="Top Stars\n(Purity = {:.0f}\%)".format(n_perfect_matches/len(top_stars)*100))
         if True in top_stars.stream.unique(): 
             plt.scatter(top_stars[top_stars.stream].α, top_stars[top_stars.stream].δ, marker='.', 
                     color = "crimson",
                     label='Matches')
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
         plt.xlim(-15,15)
         plt.ylim(-15,15)
         plt.xlabel(r"$\alpha$ [\textdegree]")
