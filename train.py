@@ -40,7 +40,7 @@ plt.rcParams.update({
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("stream", default=None, choices = ["gd1", "gd1_tail", "mock"], help="Choose which stream to analyze.")
-    parser.add_argument("--save_label", default=None, type=str, help="Folder name for saving plots. If not specified, plots will not be saved.")
+    parser.add_argument("--save_label", default=None, type=str, help="Folder name for saving training outputs & plots. If not specified, plots will not be saved.")
     parser.add_argument("--percent_bkg", default=100, type=int, help="Percent of background to train on.")
     parser.add_argument("--layer_size", default=128, type=int, help="Number of nodes per layer.")
     parser.add_argument("--epochs", default=200, type=int, help="Number of training epochs.")
@@ -53,13 +53,15 @@ if __name__ == "__main__":
     args = get_args()
     
     save_label = args.save_label
-    
+    save_folder = os.path.join("./trained_models",save_label)
+    os.makedirs(save_folder, exist_ok=True)
+
     ### Load file & preprocess
     df = load_file(stream = args.stream, percent_bkg = args.percent_bkg)
-    visualize_stream(df, save_label = save_label)
+    visualize_stream(df, save_folder = save_folder)
     
     ### Define signal & sideband regions 
-    df_slice = signal_sideband(df, stream = args.stream, save_label = save_label)
+    df_slice = signal_sideband(df, stream = args.stream, save_folder = save_folder)
     
     ### Prepare datasets for training
     training_vars = ['μ_α','δ','α','color','mag']
@@ -75,8 +77,6 @@ if __name__ == "__main__":
     x_val = sc.transform(x_val)
     
     ### Define model architecture 
-    save_name = "best_weights"+args.stream
-
     model = Sequential()
     
     if args.l2_reg == 0: 
@@ -84,19 +84,13 @@ if __name__ == "__main__":
     else:
         reg = regularizers.l2(args.l2_reg)
     
-    model.add(Dense(args.layer_size, input_dim=len(training_vars), activation='relu',
-                   activity_regularizer=reg
-                   )) 
+    model.add(Dense(args.layer_size, input_dim=len(training_vars), activation='relu', activity_regularizer=reg)) 
     if args.dropout != 0: 
         model.add(Dropout(args.dropout))
-    model.add(Dense(args.layer_size, activation='relu',
-                   activity_regularizer=reg
-                   ))
+    model.add(Dense(args.layer_size, activation='relu', activity_regularizer=reg))
     if args.dropout != 0: 
         model.add(Dropout(args.dropout))
-    model.add(Dense(args.layer_size, activation='relu',
-                   activity_regularizer=reg
-                   ))
+    model.add(Dense(args.layer_size, activation='relu', activity_regularizer=reg))
     if args.dropout != 0: 
         model.add(Dropout(args.dropout))
     model.add(Dense(1, activation='sigmoid'))
@@ -111,8 +105,7 @@ if __name__ == "__main__":
                                              verbose=1) 
 
     # saves weights from the epoch with lowest val_loss 
-    os.makedirs("./weights", exist_ok=True)
-    checkpoint = callbacks.ModelCheckpoint("./weights/"+save_name+".h5", 
+    checkpoint = callbacks.ModelCheckpoint(os.path.join(save_folder,"weights.h5"), 
                                            monitor='val_loss', 
                                            mode='auto', 
                                            verbose=1, 
@@ -129,13 +122,16 @@ if __name__ == "__main__":
                        )
     
     ### Load best weights
-    model.load_weights("./weights/"+save_name+".h5")
+    model.load_weights(os.path.join(save_folder,"weights.h5"))
 
     ### Add the NN prediction score to the test set: 
     test["nn_score"] = model.predict(x_test)
     fake_eff_baseline, real_eff_baseline, thresholds = roc_curve(np.asarray(y_test), test.nn_score)
     auc_baseline = auc(fake_eff_baseline, real_eff_baseline)
-    print("AUC: {}".format(auc_baseline))
+    print("AUC: {:.3f}".format(auc_baseline))
 
     ### Plot scores:
-    plot_results(test, save_label)
+    plot_results(test, save_folder)
+    
+    ### Save test DataFrame for future plotting
+    test.to_hdf(os.path.join(save_folder,"df_test.h5"))
