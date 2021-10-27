@@ -30,25 +30,47 @@ plt.rcParams.update({
     "legend.fontsize": 11
 })
 
-def get_random_file():
-    file = random.choice(glob("/data0/mpettee/gaia_data/mock_streams/*.npy"))
+def get_random_file(glob_path):
+    file = random.choice(glob(glob_path))
     return(file)
 
 def load_file(stream = None, percent_bkg = 100):
-    ### Stream options: ["mock", "gd1", "fjorm"]
+    ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
-        file = get_random_file()
+        file = get_random_file("/data0/mpettee/gaia_data/mock_streams/*.npy")
         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
         df['stream'] = df['stream']/100
         df['stream'] = df['stream'].astype(bool)
 
     elif stream == "gd1": 
-        print("Load GD1")
-        df = pd.DataFrame()
-        
+        file = "/data0/mpettee/gaia_data/gd1/GD1-circle-140-30-15.pkl"
+        df = np.load(file, allow_pickle = True)
+
+        ### Select columns
+        columns = ['pmdec','pmra','dec','ra','phot_g_mean_mag','phot_bp_mean_mag','phot_rp_mean_mag','streammask']
+        df = df[columns]
+
+        ### Create b-r & g columns; rename others
+        df["b-r"] = df.phot_bp_mean_mag - df.phot_rp_mean_mag
+        df.drop(columns = ['phot_bp_mean_mag','phot_rp_mean_mag'], inplace=True)
+        df.rename(columns={'phot_g_mean_mag': 'g', 
+                           'ra': 'α',
+                           'dec': 'δ',
+                           'pmra': 'μ_α',
+                           'pmdec': 'μ_δ',
+                           'streammask': 'stream'}, inplace=True)
+
     elif stream == "gd1_tail":
         file = "/data0/mpettee/gaia_data/gd1_tail/gd1_tail.h5"
         df = pd.read_hdf(file)
+    
+    elif stream == "jhelum":
+        ### Note that we don't have stream labels here
+        file = get_random_file("/data0/mpettee/gaia_data/jhelum/*.npy")
+        print(file)
+        df = pd.DataFrame(np.load(file)[:,[9,8,6,7,4,5]], columns=['μ_δ','μ_α','δ','α','mag','color'])
+    else:
+        print("Stream not recognized.")
         
     ### Drop any rows containing a NaN value
     df.dropna(inplace = True)
@@ -56,9 +78,9 @@ def load_file(stream = None, percent_bkg = 100):
     ### Restrict data to a radius of 15
     center_α = 0.5*(df.α.min()+df.α.max())
     center_δ = 0.5*(df.δ.min()+df.δ.max())
-    df = df[np.sqrt((df.δ-center_δ)**2+(df.α-center_α)**2) < 15]        
+    df = df[np.sqrt((df.δ-center_δ)**2+(df.α-center_α)**2) < 15]
     
-    if percent_bkg != 100:
+    if percent_bkg != 100 and "stream" in df.keys():
         ### Optional: reduce background
         n_sig = len(df[df.stream == True])
         n_bkg = len(df[df.stream == False])
@@ -71,8 +93,8 @@ def load_file(stream = None, percent_bkg = 100):
     return df
 
 def visualize_stream(df, save_folder=None):
-    plt.figure(figsize=(3,3), tight_layout=True) 
-    plt.hist2d(df.α,df.δ,bins=100)
+    plt.figure(figsize=(3,3), tight_layout=True)
+    plt.hist2d(df.α,df.δ,bins=50)
     if "stream" in df.keys():
         plt.scatter(df[df.stream == True].α,df[df.stream == True].δ,color='white',s=0.2, label="Stream")
     plt.xlabel(r"$\alpha$ [\textdegree]")
@@ -116,6 +138,12 @@ def signal_sideband(df, stream, save_folder=None):
         sr_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/4
         sr_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/4
 
+    else: 
+        sb_min = df.μ_δ.mean()-df.μ_δ.std()/2
+        sb_max = df.μ_δ.mean()+df.μ_δ.std()/2
+        sr_min = df.μ_δ.mean()-df.μ_δ.std()/4
+        sr_max = df.μ_δ.mean()+df.μ_δ.std()/4
+        
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
     
@@ -131,10 +159,12 @@ def signal_sideband(df, stream, save_folder=None):
 
     sr = df_slice[df_slice.label == 1]
     sb = df_slice[df_slice.label == 0]
-
-    print("Signal region has {:,} stream and {:,} bkg events.".format(sr.stream.value_counts()[True], sr.stream.value_counts()[False]))
-    print("Sideband region has {:,} stream and {:,} bkg events.".format(sb.stream.value_counts()[True], sb.stream.value_counts()[False]))
     print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
+
+    if "stream" in df.keys():
+        print("Signal region has {:,} stream and {:,} bkg events.".format(sr.stream.value_counts()[True], sr.stream.value_counts()[False]))
+        print("Sideband region has {:,} stream and {:,} bkg events.".format(sb.stream.value_counts()[True], sb.stream.value_counts()[False]))
+        
     return df_slice
 
 def plot_results(test, save_folder=None):
@@ -167,7 +197,7 @@ def plot_results(test, save_folder=None):
     
     ### Plot purities
     # Scan for optimal percentage
-    cuts = np.linspace(0.1, 50, 100)
+    cuts = np.linspace(0.01, 50, 100)
     efficiencies = []
     purities = []
     for x in cuts:
@@ -182,7 +212,7 @@ def plot_results(test, save_folder=None):
             purities.append(np.nan)
 
     ### Choose a cut to optimize purity
-    print("Maximum purity of {:.1f}% at {:.1f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
+    print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
     cut = cuts[np.nanargmax(purities)]
     plt.figure()
     plt.plot(cuts, purities, label="Signal Purity")
@@ -192,7 +222,7 @@ def plot_results(test, save_folder=None):
         plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
-    for x in [0.1, 1, 5, 10, 20]: # percentages
+    for x in [0.001, 0.01, 0.1, 1, 5, 10, 20]: # percentages
         top_stars = test[(test['nn_score'] >= test['nn_score'].quantile((100-x)/100))]
         stream_stars_in_test_set = test[test.stream == True]
 
@@ -207,7 +237,7 @@ def plot_results(test, save_folder=None):
         print("Purity: {:.1f}%".format(n_perfect_matches/len(top_stars)*100))
 
         plt.figure(figsize=(5,3), tight_layout=True) 
-        plt.title('Top {:.1f}\% NN Scores'.format(x))
+        plt.title('Top {:.2f}\% NN Scores'.format(x))
 #         plt.title("Purity = {:.0f}\%".format(n_perfect_matches/len(top_stars)*100), fontsize=11)
         plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
                     color = "lightgray",

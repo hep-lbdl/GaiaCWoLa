@@ -8,6 +8,7 @@ from scipy import stats
 from glob import glob
 import argparse
 import json
+import time 
 
 ### ML imports
 from keras.layers import Input, Dense, Dropout
@@ -44,6 +45,7 @@ def get_args():
     parser.add_argument("--save_label", default=None, type=str, help="Folder name for saving training outputs & plots. If not specified, plots will not be saved.")
     parser.add_argument("--percent_bkg", default=100, type=int, help="Percent of background to train on.")
     parser.add_argument("--layer_size", default=128, type=int, help="Number of nodes per layer.")
+    parser.add_argument("--patience", default=30, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
     parser.add_argument("--epochs", default=200, type=int, help="Number of training epochs.")
     parser.add_argument("--batch_size", default=32, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout probability.")
@@ -52,6 +54,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
+    t0 = time.time()
     
     save_label = args.save_label
     save_folder = os.path.join("./trained_models",save_label)
@@ -106,7 +109,7 @@ if __name__ == "__main__":
     
     # stops if val_loss doesn't improve for [patience] straight epochs
     early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
-                                             patience=20, 
+                                             patience=args.patience, 
                                              verbose=1) 
 
     # saves weights from the epoch with lowest val_loss 
@@ -137,12 +140,14 @@ if __name__ == "__main__":
     ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
     ax.set_title("Accuracy")
     ax.set_xlabel("Epochs")
+    ax.legend()
 
     ax = axs[1]
     ax.plot(history.history["loss"], label="Training Loss")
     ax.plot(history.history["val_loss"], label="Validation Loss")
     ax.set_title("Loss")
     ax.set_xlabel("Epochs")
+    ax.legend()
     plt.savefig(os.path.join(save_folder,"loss_curves.png"))
     
     ### Load best weights
@@ -159,3 +164,6 @@ if __name__ == "__main__":
     
     ### Save test DataFrame for future plotting
     test.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
+    
+    print("Finished in {:,} seconds.".format(time.time() - t0))
+          
