@@ -145,15 +145,15 @@ def signal_sideband(df, stream, save_folder=None):
 
     elif stream == "gd1": 
         sb_min = -18
-        sb_max = -9.5
         sr_min = -15
         sr_max = -11
+        sb_max = -9.5
         
     else: 
         sb_min = df.μ_δ.min()
         sb_max = df.μ_δ.max()
-        sr_min = sb_min+2.5
-        sr_max = sb_max-2.5
+        sr_min = sb_min+1
+        sr_max = sb_max-1
     
     print(sb_min, sr_min, sr_max, sb_max)
     
