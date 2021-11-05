@@ -20,7 +20,7 @@ from livelossplot.keras import PlotLossesCallback
 
 ### Plot setup
 plt.rcParams.update({
-    'figure.dpi': 150,
+#     'figure.dpi': 100,
     "text.usetex": True,
     "pgf.rcfonts": False,
     "font.family": "serif",
@@ -61,7 +61,7 @@ def load_file(stream = None, percent_bkg = 100):
                            'streammask': 'stream'}, inplace=True)
 
     elif stream == "gd1_tail":
-        file = "/data0/mpettee/gaia_data/gd1_tail/gd1_tail.h5"
+        file = "./gaia_data/gd1_tail/gd1_tail.h5"
         df = pd.read_hdf(file)
     
     elif stream == "jhelum":
@@ -94,7 +94,7 @@ def load_file(stream = None, percent_bkg = 100):
     return df
 
 def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
-    plt.figure(figsize=(3.7,3), tight_layout=True)
+    plt.figure(figsize=(3.7,3), dpi=150, tight_layout=True)
     if type == "scatter":
         plt.scatter(df.α,df.δ, marker='.', s=0.1, c=df["b-r"])
     else:
@@ -110,9 +110,9 @@ def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
     
     bins = np.linspace(-25,10,100)
     if "stream" in df.keys():
-         fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(6,3), tight_layout=True)
+         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(6,3), tight_layout=True)
     else:
-         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(3,3), tight_layout=True)
+         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=150, figsize=(3,3), tight_layout=True)
     
     if "stream" in df.keys(): ax = axs[0]
     ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins])
@@ -132,10 +132,10 @@ def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
         
 def signal_sideband(df, stream, save_folder=None):
     if stream == "gd1_tail":
-        sb_min = -7.5
-        sb_max = 0
-        sr_min = -5
-        sr_max = -1.5
+        sb_min = -11
+        sb_max = -7
+        sr_min = -10
+        sr_max = -8
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
@@ -160,7 +160,7 @@ def signal_sideband(df, stream, save_folder=None):
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
     
-    plt.figure(figsize=(4,3), tight_layout=True)
+    plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
     bins = np.linspace(sb_min,sb_max,100)
     plt.hist(df_slice[df_slice.label == 1].μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
     plt.hist(df_slice[df_slice.label == 0].μ_δ,bins=bins,color="orange",label="Sideband Region")
@@ -192,7 +192,7 @@ def signal_sideband(df, stream, save_folder=None):
 def plot_results(test, save_folder=None):
     if save_folder is not None: 
         os.makedirs(save_folder, exist_ok=True)
-    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8,3), constrained_layout=True)
+    fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(8,3), constrained_layout=True)
     bins=np.linspace(0,1,10)
     ax = axs[0]
     ax.tick_params(labelsize=12)
@@ -240,7 +240,7 @@ def plot_results(test, save_folder=None):
         if not np.isnan(purities).all():
             print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
             cut = cuts[np.nanargmax(purities)]
-            plt.figure()
+            plt.figure(dpi=150)
             plt.plot(cuts, purities, label="Signal Purity")
             plt.xlabel("Top \% Stars, ranked by NN score")
             plt.legend()    
@@ -259,7 +259,7 @@ def plot_results(test, save_folder=None):
         
             print("Top {}% stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
 
-        plt.figure(figsize=(5,3), tight_layout=True) 
+        plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
         plt.title('Top {:.3f}\% NN Scores'.format(x))
         if "stream" in test.keys():
             plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
