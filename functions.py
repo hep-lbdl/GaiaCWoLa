@@ -143,10 +143,10 @@ def signal_sideband(df, stream, save_folder=None):
         # sr_min = -10 # Sowmya's limits
         # sr_max = -8 # Sowmya's limits
         
-        sb_min = -14
-        sr_min = -12
+        sb_min = -15
+        sr_min = -11
         sr_max = -7
-        sb_max = -6
+        sb_max = -5
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
@@ -277,6 +277,43 @@ def plot_results(test, save_folder=None):
                 plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
+    for x in [10, 100]: # top N stars
+        top_stars = test.sort_values('nn_score',ascending=False)[:x]
+        if "stream" in test.keys():
+            stream_stars_in_test_set = test[test.stream == True]
+            if True in top_stars.stream.unique(): 
+                n_perfect_matches = top_stars.stream.value_counts()[True] 
+            else: 
+                n_perfect_matches = 0 
+        
+            print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
+
+        plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
+        plt.title('Top {:.3f}\% NN Scores'.format(x))
+        if "stream" in test.keys():
+            plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
+                    color = "lightgray",
+                    label='Stream')
+            plt.scatter(top_stars.α, top_stars.δ, marker='.', 
+                    color = "lightpink",
+                    label="Top Stars\n(Purity = {:.0f}\%)".format(n_perfect_matches/len(top_stars)*100))
+            if True in top_stars.stream.unique(): 
+                plt.scatter(top_stars[top_stars.stream].α, top_stars[top_stars.stream].δ, marker='.', 
+                        color = "crimson",
+                        label='Matches')
+        else:
+            plt.scatter(top_stars.α, top_stars.δ, marker='.', 
+                    color = "crimson",
+                    label="Top Stars") 
+        plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
+        plt.xlim(-15,15)
+        plt.ylim(-15,15)
+        plt.xlabel(r"$\alpha$ [\textdegree]")
+        plt.ylabel(r"$\delta$ [\textdegree]")
+        if save_folder is not None: 
+            plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
+
+    print("===================")
     for x in [0.001, 0.01, 0.1, 1, 5, 10, 20]: # percentages
         top_stars = test[(test['nn_score'] >= test['nn_score'].quantile((100-x)/100))]
         if "stream" in test.keys():

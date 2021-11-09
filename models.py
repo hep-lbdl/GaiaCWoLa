@@ -20,7 +20,7 @@ from sklearn import preprocessing
 from livelossplot.keras import PlotLossesCallback
 from livelossplot import PlotLossesKeras
 
-def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10):
+def train(df_slice, save_folder="./test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10):
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
     elif 'b-r' in df_slice.keys():
@@ -59,7 +59,8 @@ def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout
                                                  verbose=1) 
 
         # saves weights from the epoch with lowest val_loss 
-        checkpoint = callbacks.ModelCheckpoint("weights.h5", 
+        weights_path = os.path.join(save_folder,"weights.h5")
+        checkpoint = callbacks.ModelCheckpoint(weights_path, 
                                                monitor='val_loss', 
                                                mode='auto', 
                                                verbose=1, 
@@ -76,7 +77,7 @@ def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout
                    )
         
         ### Load best weights
-        model.load_weights("weights.h5")
+        model.load_weights(weights_path)
 
     elif n_folds > 1: 
         # Define per-fold score containers
@@ -112,7 +113,7 @@ def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout
                                                      verbose=1) 
 
             # saves weights from the epoch with lowest val_loss 
-            checkpoint = callbacks.ModelCheckpoint("kfold_weights_{}.h5".format(fold_number), 
+            checkpoint = callbacks.ModelCheckpoint(os.path.join(save_folder,"kfold_weights_{}.h5".format(fold_number)), 
                                                    monitor='val_loss', 
                                                    mode='auto', 
                                                    verbose=1, 
@@ -153,8 +154,25 @@ def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout
 
         ### Load best weights
         best_fold_number = np.argmin(loss_per_fold)
-        model.load_weights("kfold_weights_{}.h5".format(best_fold_number))
+        model.load_weights(os.path.join(save_folder,"kfold_weights_{}.h5".format(best_fold_number)))
         
+    ### Save training losses & accuracies
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
+    ax = axs[0]
+    ax.plot(history.history["accuracy"], label="Training Accuracy")
+    ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
+    ax.set_title("Accuracy")
+    ax.set_xlabel("Epochs")
+    ax.legend()
+
+    ax = axs[1]
+    ax.plot(history.history["loss"], label="Training Loss")
+    ax.plot(history.history["val_loss"], label="Validation Loss")
+    ax.set_title("Loss")
+    ax.set_xlabel("Epochs")
+    ax.legend()
+    plt.savefig(os.path.join(save_folder,"loss_curves.png"))
+    
     ### Add the NN prediction score to the test set: 
     test["nn_score"] = model.predict(x_test)
     fake_eff_baseline, real_eff_baseline, thresholds = roc_curve(np.asarray(y_test), test.nn_score)
@@ -162,5 +180,10 @@ def train(df_slice, n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout
     print("AUC: {:.3f}".format(auc_baseline))
 
     ### Plot scores:
-    plot_results(test)
+    plot_results(test, save_folder=save_folder)
+    
+    ### Save test DataFrame for future plotting
+    test.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
+    
+    
 
