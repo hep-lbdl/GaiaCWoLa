@@ -20,7 +20,7 @@ from livelossplot.keras import PlotLossesCallback
 
 ### Plot setup
 plt.rcParams.update({
-#     'figure.dpi': 100,
+    'figure.dpi': 100,
     "text.usetex": True,
     "pgf.rcfonts": False,
     "font.family": "serif",
@@ -34,16 +34,16 @@ def get_random_file(glob_path):
     file = random.choice(glob(glob_path))
     return(file)
 
-def load_file(stream = None, percent_bkg = 100):
+def load_file(stream = None, folder = "./gaia_data/", percent_bkg = 100):
     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
-        file = get_random_file("/data0/mpettee/gaia_data/mock_streams/*.npy")
+        file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
         df['stream'] = df['stream']/100
         df['stream'] = df['stream'].astype(bool)
 
     elif stream == "gd1": 
-        file = "/data0/mpettee/gaia_data/gd1/GD1-circle-140-30-15.pkl"
+        file = os.path.join(folder,"gd1/GD1-circle-140-30-15.pkl")
         df = np.load(file, allow_pickle = True)
 
         ### Select columns
@@ -61,12 +61,18 @@ def load_file(stream = None, percent_bkg = 100):
                            'streammask': 'stream'}, inplace=True)
 
     elif stream == "gd1_tail":
-        file = "./gaia_data/gd1_tail/gd1_tail.h5"
+        file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
         df = pd.read_hdf(file)
-    
+        
+    elif stream == "gaia3":
+        ### Note that we don't have stream labels here
+        file = get_random_file(os.path.join(folder,"gaia3/*.npy"))
+        print(file)
+        df = pd.DataFrame(np.load(file)[:,[9,8,6,7,4,5]], columns=['μ_δ','μ_α','δ','α','mag','color'])        
     elif stream == "jhelum":
         ### Note that we don't have stream labels here
-        file = get_random_file("/data0/mpettee/gaia_data/jhelum/*.npy")
+        file = get_random_file(os.path.join(folder,"jhelum/*.npy"))
+#         file = "../GaiaCWoLa/gaia_data/jhelum/gaiascan_l303.8_b58.4_ra193.3_dec-4.5.npy"
         print(file)
         df = pd.DataFrame(np.load(file)[:,[9,8,6,7,4,5]], columns=['μ_δ','μ_α','δ','α','mag','color'])
     else:
@@ -91,7 +97,7 @@ def load_file(stream = None, percent_bkg = 100):
         print("After reduction, stream stars make up {:.3f}% of the dataset.".format(100*n_sig/len(df)))
     
     df.reset_index(inplace=True)
-    return df
+    return df, file
 
 def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
     plt.figure(figsize=(3.7,3), dpi=150, tight_layout=True)
@@ -132,10 +138,15 @@ def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
         
 def signal_sideband(df, stream, save_folder=None):
     if stream == "gd1_tail":
-        sb_min = -11
-        sb_max = -7
-        sr_min = -10
-        sr_max = -8
+        # sb_min = -11 # Sowmya's limits
+        # sb_max = -7 # Sowmya's limits
+        # sr_min = -10 # Sowmya's limits
+        # sr_max = -8 # Sowmya's limits
+        
+        sb_min = -14
+        sr_min = -12
+        sr_max = -7
+        sb_max = -6
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
@@ -149,19 +160,37 @@ def signal_sideband(df, stream, save_folder=None):
         sr_max = -11
         sb_max = -9.5
         
+    elif stream == "jhelum":
+        sb_min = df.μ_δ.mean()-df.μ_δ.std()/2
+        sb_max = df.μ_δ.mean()+df.μ_δ.std()/2
+        sr_min = df.μ_δ.mean()-df.μ_δ.std()/4
+        sr_max = df.μ_δ.mean()+df.μ_δ.std()/4        
+        
     else: 
         sb_min = df.μ_δ.min()
         sb_max = df.μ_δ.max()
         sr_min = sb_min+1
         sr_max = sb_max-1
+        
+    plt.figure(dpi=150)
+    bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
+    plt.hist(df.μ_δ, bins=bins, color="lightgray", label="Background");
+    if "stream" in df.keys(): plt.hist(df[df.stream == True].μ_δ, bins=bins, color="deeppink", label="Stream");
+    plt.yscale('log')
+    plt.legend(frameon=False)
+    plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
+    plt.ylabel("Counts")
+    if save_folder is not None:
+        plt.savefig(os.path.join(save_folder,"mu_delta.png"))
     
-    print(sb_min, sr_min, sr_max, sb_max)
+    print("Sideband region: [{},{}]".format(sb_min,sb_max))
+    print("Signal region: [{},{}]".format(sr_min,sr_max))
     
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
     
     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
-    bins = np.linspace(sb_min,sb_max,100)
+    bins = np.linspace(sb_min,sb_max,50)
     plt.hist(df_slice[df_slice.label == 1].μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
     plt.hist(df_slice[df_slice.label == 0].μ_δ,bins=bins,color="orange",label="Sideband Region")
     plt.legend(frameon=False)
@@ -184,9 +213,9 @@ def signal_sideband(df, stream, save_folder=None):
         try: n_sideband_bkg_stars = sb.stream.value_counts()[False]
         except: n_sideband_bkg_stars = 0
             
-        print("Signal region has {:,} stream and {:,} bkg events.".format(n_sig_stream_stars, n_sig_bkg_stars))
-        print("Sideband region has {:,} stream and {:,} bkg events.".format(n_sideband_stream_stars, n_sideband_bkg_stars))
-        
+        print("Signal region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sig_stream_stars, n_sig_bkg_stars,100*n_sig_stream_stars/n_sig_bkg_stars))
+        print("Sideband region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sideband_stream_stars, n_sideband_bkg_stars, 100*n_sideband_stream_stars/n_sideband_bkg_stars))
+        print("f_sig = {:.1f}X f_sideband.".format(n_sig_stream_stars/n_sig_bkg_stars/(n_sideband_stream_stars/n_sideband_bkg_stars)))
     return df_slice
 
 def plot_results(test, save_folder=None):
