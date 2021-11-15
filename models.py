@@ -20,7 +20,8 @@ from sklearn import preprocessing
 from livelossplot.keras import PlotLossesCallback
 from livelossplot import PlotLossesKeras
 
-def train(df_slice, save_folder="./test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10):
+def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10):
+    os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
     elif 'b-r' in df_slice.keys():
