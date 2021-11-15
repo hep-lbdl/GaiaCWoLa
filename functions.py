@@ -289,7 +289,7 @@ def plot_results(test, save_folder=None):
             print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
 
         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
-        plt.title('Top {:.3f}\% NN Scores'.format(x))
+        plt.title('Top {} Stars'.format(x))
         if "stream" in test.keys():
             plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
                     color = "lightgray",
