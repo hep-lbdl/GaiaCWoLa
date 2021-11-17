@@ -11,6 +11,7 @@ from glob import glob
 import argparse
 import json
 import time 
+from random import randrange
 
 ### ML imports
 from keras.layers import Input, Dense, Dropout
@@ -26,7 +27,7 @@ from functions import *
 from models import *
 
 ### GPU Setup
-os.environ["CUDA_VISIBLE_DEVICES"] = "2" # pick a number < 4 on ML4HEP; < 3 on Voltan 
+os.environ["CUDA_VISIBLE_DEVICES"] = str(randrange(4)) # pick a number < 4 on ML4HEP; < 3 on Voltan 
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -53,6 +54,12 @@ def get_args():
     parser.add_argument("--batch_size", default=32, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout probability.")
     parser.add_argument("--l2_reg", default=0, type=float, help="L2 regularization.")
+    parser.add_argument("--n_folds", default=1, type=int, help="Number of k-folds.")
+    parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
+    parser.add_argument('--remove_stream_sb', action='store_true', help="Use this if you want to remove stream stars from the sideband region.")
+    parser.add_argument("--best_of_n_loops", default=3, type=int, help="Repeats the training N times and picks the best weights.")
+
+
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -73,10 +80,17 @@ if __name__ == "__main__":
     visualize_stream(df, save_folder = save_folder)
     
     ### Define signal & sideband regions 
-    df_slice = signal_sideband(df, stream = args.stream, save_folder = save_folder)
+    df = signal_sideband(df, stream = args.stream, save_folder = save_folder)
+    
+    ### Remove stream stars from sideband
+    if args.remove_stream_sb:
+        df = df[((df.label == 0) & (df.stream == False)) | (df.label == 1)]
+    
+    ### Add sample weights to stream stars
+    df["weight"] = np.where(df['stream']==True, args.sample_weight, 1)
     
     ### Train
-    train(df_slice, layer_size=args.layer_size, dropout=args.dropout, l2_reg=args.l2_reg, epochs=args.epochs, patience=args.patience, n_folds=1, save_folder=save_folder)
+    train(df, layer_size=args.layer_size, dropout=args.dropout, l2_reg=args.l2_reg, epochs=args.epochs, patience=args.patience, n_folds=args.n_folds, best_of_n_loops=args.best_of_n_loops, save_folder=save_folder)
     
     print("Finished in {:,.1f} seconds.".format(time.time() - t0))
           
