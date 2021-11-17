@@ -8,7 +8,7 @@ from scipy import stats
 from tqdm import tqdm 
 from glob import glob
 import random
-from functions import *
+import shutil
 
 ### ML imports
 from keras.layers import Input, Dense, Dropout
@@ -20,7 +20,10 @@ from sklearn import preprocessing
 from livelossplot.keras import PlotLossesCallback
 from livelossplot import PlotLossesKeras
 
-def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10):
+### Custom imports
+from functions import *
+
+def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
@@ -30,6 +33,13 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
 
     x_train, x_val, x_test = [train[training_vars], validate[training_vars], test[training_vars]]
     y_train, y_val, y_test = [train.label, validate.label, test.label]
+    
+    if 'weight' in df_slice.keys():
+        print("Using sample weights")
+        sample_weight = train.weight
+    else:
+        print("Not using sample weights")
+        sample_weight = None
 
     from sklearn.preprocessing import StandardScaler
     sc = StandardScaler()
@@ -39,64 +49,11 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
 
     print("Training on {:,} events.".format(len(train)))
 
-    if n_folds <= 1:  # train without k-folding 
-        ### Define model architecture 
-        reg = regularizers.l2(l2_reg)
-
-        model = Sequential()
-        model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu', activity_regularizer=reg)) 
-        if dropout != 0: model.add(Dropout(dropout))
-        model.add(Dense(layer_size, activation='relu', activity_regularizer=reg))
-        if dropout != 0: model.add(Dropout(dropout))
-        model.add(Dense(layer_size, activation='relu', activity_regularizer=reg))
-        if dropout != 0: model.add(Dropout(dropout))
-        model.add(Dense(1, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        model.summary()
-
-        # stops if val_loss doesn't improve for [patience] straight epochs
-        early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
-                                                 patience=patience, 
-                                                 verbose=1) 
-
-        # saves weights from the epoch with lowest val_loss 
-        weights_path = os.path.join(save_folder,"weights.h5")
-        checkpoint = callbacks.ModelCheckpoint(weights_path, 
-                                               monitor='val_loss', 
-                                               mode='auto', 
-                                               verbose=1, 
-                                               save_best_only=True, 
-                                               save_weights_only=True)
-        
-        ### Train!
-        history = model.fit(x_train, y_train, 
-                    epochs=epochs, 
-                    batch_size=batch_size,
-                    validation_data=(x_val,y_val),
-                    callbacks = [PlotLossesKeras(),checkpoint,early_stopping],
-                    verbose = 2,
-                   )
-        
-        ### Load best weights
-        model.load_weights(weights_path)
-
-    elif n_folds > 1: 
-        # Define per-fold score containers
-        acc_per_fold = []
-        loss_per_fold = []
-
-        inputs = np.concatenate((x_train,x_val), axis=0)
-        targets = np.concatenate((y_train,y_val), axis=0)
-    
-        # Define the K-fold Cross Validator
-        from sklearn.model_selection import KFold
-        kfold = KFold(n_splits=n_folds, shuffle=True)
-        fold_number = 0
-
-        for train, validate in kfold.split(inputs, targets):
+    if n_folds <= 1:  # train without k-folding
+        best_losses = []
+        for loop in range(best_of_n_loops): 
             ### Define model architecture 
             reg = regularizers.l2(l2_reg)
-
             model = Sequential()
             model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu', activity_regularizer=reg)) 
             if dropout != 0: model.add(Dropout(dropout))
@@ -114,24 +71,93 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                                                      verbose=1) 
 
             # saves weights from the epoch with lowest val_loss 
-            checkpoint = callbacks.ModelCheckpoint(os.path.join(save_folder,"kfold_weights_{}.h5".format(fold_number)), 
+            weights_path = os.path.join(save_folder,"weights_loop{}.h5".format(loop))
+            checkpoint = callbacks.ModelCheckpoint(weights_path, 
                                                    monitor='val_loss', 
                                                    mode='auto', 
                                                    verbose=1, 
                                                    save_best_only=True, 
                                                    save_weights_only=True)
 
-            print("\nTraining fold #{}...".format(fold_number))
-            history = model.fit(inputs[train], targets[train], 
-                            epochs=epochs, 
-                            batch_size=batch_size,
-                            validation_data = (inputs[validate], targets[validate]),
-                            callbacks = [
-                                         PlotLossesKeras(),
-                                         checkpoint,early_stopping],
-                            verbose = 2,
-                           )
 
+            ### Train!
+            history = model.fit(x_train, y_train, 
+                        epochs=epochs, 
+                        sample_weight=sample_weight,
+                        batch_size=batch_size,
+                        validation_data=(x_val,y_val),
+                        callbacks = [PlotLossesKeras(),checkpoint,early_stopping],
+                        verbose = 2,
+                       )
+            best_losses.append(np.min(history.history['loss']))
+        
+        ### Load best weights
+        print("Best losses:", best_losses)
+        print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
+        best_weights_path = os.path.join(save_folder,"weights_loop{}.h5".format(np.argmin(best_losses)))
+        model.load_weights(best_weights_path)
+
+    elif n_folds > 1: 
+        # Define per-fold score containers
+        acc_per_fold = []
+        loss_per_fold = []
+
+        inputs = np.concatenate((x_train,x_val), axis=0)
+        targets = np.concatenate((y_train,y_val), axis=0)
+    
+        # Define the K-fold Cross Validator
+        from sklearn.model_selection import KFold
+        kfold = KFold(n_splits=n_folds, shuffle=True)
+        fold_number = 0
+
+        for train, validate in kfold.split(inputs, targets):
+            print("\nTraining fold #{}...".format(fold_number))
+            best_losses = []
+            for loop in range(best_of_n_loops): 
+                ### Define model architecture 
+                reg = regularizers.l2(l2_reg)
+                model = Sequential()
+                model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu', activity_regularizer=reg)) 
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(layer_size, activation='relu', activity_regularizer=reg))
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(layer_size, activation='relu', activity_regularizer=reg))
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(1, activation='sigmoid'))
+                model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+                model.summary()
+
+                # stops if val_loss doesn't improve for [patience] straight epochs
+                early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
+                                                         patience=patience, 
+                                                         verbose=1) 
+
+                # saves weights from the epoch with lowest val_loss 
+                checkpoint = callbacks.ModelCheckpoint(os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number,loop)), 
+                                                       monitor='val_loss', 
+                                                       mode='auto', 
+                                                       verbose=1, 
+                                                       save_best_only=True, 
+                                                       save_weights_only=True)
+
+                history = model.fit(inputs[train], targets[train], 
+                                epochs=epochs, 
+                                batch_size=batch_size,
+                                validation_data = (inputs[validate], targets[validate]),
+                                callbacks = [
+                                             # PlotLossesKeras(),
+                                             checkpoint,early_stopping],
+                                verbose = 2,
+                               )
+                best_losses.append(np.min(history.history['loss']))
+
+            ### Load best weights
+            print("Best losses:", best_losses)
+            print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
+            weights_path = os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number, np.argmin(best_losses)))
+            model.load_weights(weights_path)
+            shutil.copy(os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number, np.argmin(best_losses))),os.path.join(save_folder,"kfold{}_best_weights.h5".format(fold_number)))
+                
             # Evaluate trained model
             scores = model.evaluate(inputs[validate], targets[validate], verbose=0)
             y_pred = model.predict(inputs[validate]).ravel()
@@ -153,9 +179,8 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
         print('------------------------------------------------------------------------')
         print('Best fold number (lowest loss): {}'.format(np.argmin(loss_per_fold)))
 
-        ### Load best weights
         best_fold_number = np.argmin(loss_per_fold)
-        model.load_weights(os.path.join(save_folder,"kfold_weights_{}.h5".format(best_fold_number)))
+        model.load_weights(os.path.join(save_folder,"kfold{}_best_weights.h5".format(best_fold_number)))
         
     ### Save training losses & accuracies
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
