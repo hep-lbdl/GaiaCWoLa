@@ -87,7 +87,7 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
                         callbacks = [PlotLossesKeras(),checkpoint,early_stopping],
-                        verbose = 2,
+                        verbose = 1,
                        )
             best_losses.append(np.min(history.history['loss']))
         
@@ -147,7 +147,7 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                                 callbacks = [
                                              # PlotLossesKeras(),
                                              checkpoint,early_stopping],
-                                verbose = 2,
+                                verbose = 1,
                                )
                 best_losses.append(np.min(history.history['loss']))
 
