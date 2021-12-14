@@ -61,8 +61,12 @@ def load_file(stream = None, folder = "./gaia_data/", percent_bkg = 100):
                            'streammask': 'stream'}, inplace=True)
 
     elif stream == "gd1_tail":
-        file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
-        df = pd.read_hdf(file)
+#         file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
+#         df = pd.read_hdf(file)
+
+        file = "gd1_allpatches.h5"
+        df_all = pd.read_hdf(file)
+        df = df_all[(df_all.α > 185) & (df_all.α < 230)] # select just the tail area 
         
     elif stream == "gaia3":
         ### Note that we don't have stream labels here
@@ -99,18 +103,28 @@ def load_file(stream = None, folder = "./gaia_data/", percent_bkg = 100):
     df.reset_index(inplace=True)
     return df, file
 
-def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
-    plt.figure(figsize=(3.7,3), dpi=150, tight_layout=True)
-    if type == "scatter":
-        plt.scatter(df.α,df.δ, marker='.', s=0.1, c=df["b-r"])
+def visualize_stream(df, save_folder=None):
+    # bins = np.linspace(-15,15,50)
+    bins_α=np.linspace(df.α.min(),df.α.max(),50)
+    bins_δ=np.linspace(df.δ.min(),df.δ.max(),50)
+    if "stream" in df.keys():
+         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(5.5,3), tight_layout=True)
     else:
-        plt.hist2d(df.α,df.δ,bins=50)
-        plt.colorbar()
-    if "stream" in df.keys() and show_stream==True:
-        plt.scatter(df[df.stream == True].α,df[df.stream == True].δ,color='white',s=0.2, label="Stream")
-    plt.xlabel(r"$\alpha$ [\textdegree]")
-    plt.ylabel(r"$\delta$ [\textdegree]");
-#     plt.legend();
+         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=150, figsize=(3,3), tight_layout=True)
+    
+    if "stream" in df.keys(): ax = axs[0]
+    ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ])
+    ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
+    ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
+    ax.set_title("Full Dataset", fontsize=16)
+    
+    if "stream" in df.keys():
+        ax = axs[1]
+        ax.hist2d(df[df.stream == True].α,df[df.stream == True].δ, bins=[bins_α,bins_δ])
+        ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
+        ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
+        ax.set_title("Stream Only", fontsize=16);
+        
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"stream_position.png"))
     
@@ -124,29 +138,55 @@ def visualize_stream(df, type="hist", show_stream=True, save_folder=None):
     ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins])
     ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
     ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
-    ax.set_title("Background")
+    ax.set_title("Full Dataset", fontsize=16)
     
     if "stream" in df.keys():
         ax = axs[1]
         ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ),df[df.stream == True].μ_δ, bins=[bins,bins])
         ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
         ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
-        ax.set_title("Stream");
+        ax.set_title("Stream Only", fontsize=16);
         
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"stream_velocities.png"))
         
-def signal_sideband(df, stream, save_folder=None):
-    if stream == "gd1_tail":
-        # sb_min = -11 # Sowmya's limits
-        # sb_max = -7 # Sowmya's limits
-        # sr_min = -10 # Sowmya's limits
-        # sr_max = -8 # Sowmya's limits
+def signal_sideband(df, stream, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None):
+    if sb_min is not None:
+        sb_min = sb_min
+        sb_max = sb_max
+        sr_min = sr_min
+        sr_max = sr_max
         
-        sb_min = -15
-        sr_min = -11
-        sr_max = -7
-        sb_max = -5
+    elif stream == "gd1_tail":
+        ### Sowmya's limits
+        # sb_min = -11 
+        # sb_max = -7 
+        # sr_min = -10 
+        # sr_max = -8 
+        
+#         ### My optimized limits (hand-chosen)
+#         sb_min = -15
+#         sr_min = -11
+#         sr_max = -7
+#         sb_max = -5
+        
+        # ### All signal in the SR
+        # sb_min = -15
+        # sr_min = -13.5
+        # sr_max = -6
+        # sb_max = -5
+        
+        # ### All signal in the SR & SR/SB have roughly equal stats
+        # sb_min = -16
+        # sr_min = -13.5
+        # sr_max = -6
+        # sb_max = -3
+        
+        # ### GD1 tail w/ overlapping patches 
+        sb_min = -8.5
+        sr_min = -5
+        sr_max = -1
+        sb_max = 0
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
@@ -189,19 +229,33 @@ def signal_sideband(df, stream, save_folder=None):
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
     
+    sr = df_slice[df_slice.label == 1]
+    sb = df_slice[df_slice.label == 0]
+    print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
+    
+    print(sb_min, sb_max)
     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
     bins = np.linspace(sb_min,sb_max,50)
-    plt.hist(df_slice[df_slice.label == 1].μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
-    plt.hist(df_slice[df_slice.label == 0].μ_δ,bins=bins,color="orange",label="Sideband Region")
+    plt.hist(sr.μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
+    plt.hist(sb.μ_δ,bins=bins,color="orange",label="Sideband Region")
     plt.legend(frameon=False)
     plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
     plt.ylabel("Counts")
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"signal_sideband.png"))
-
-    sr = df_slice[df_slice.label == 1]
-    sb = df_slice[df_slice.label == 0]
-    print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
+        
+    if "stream" in df.keys():
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
+        bins = np.linspace(sb_min,sb_max,50)
+        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True)
+        ax.set_yscale('log')
+        ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
+        ax.set_ylabel("Counts")
+        ax.axvline(x=sr_min, color="black")
+        ax.axvline(x=sr_max, color="black")
+        ax.legend(frameon=False)
+        if save_folder is not None:
+            plt.savefig(os.path.join(save_folder,"signal_sideband_composition.png"))
 
     if "stream" in df.keys():
         try: n_sig_stream_stars = sr.stream.value_counts()[True]
@@ -306,8 +360,8 @@ def plot_results(test, save_folder=None):
                     color = "crimson",
                     label="Top Stars") 
         plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
-        plt.xlim(-15,15)
-        plt.ylim(-15,15)
+        plt.xlim(test.α.min(),test.α.max())
+        plt.ylim(test.δ.min(),test.δ.max())
         plt.xlabel(r"$\alpha$ [\textdegree]")
         plt.ylabel(r"$\delta$ [\textdegree]")
         if save_folder is not None: 
@@ -343,8 +397,8 @@ def plot_results(test, save_folder=None):
                     color = "crimson",
                     label="Top Stars") 
         plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
-        plt.xlim(-15,15)
-        plt.ylim(-15,15)
+        plt.xlim(test.α.min(),test.α.max())
+        plt.ylim(test.δ.min(),test.δ.max())
         plt.xlabel(r"$\alpha$ [\textdegree]")
         plt.ylabel(r"$\delta$ [\textdegree]")
         if save_folder is not None: 
