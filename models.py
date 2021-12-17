@@ -23,7 +23,7 @@ from livelossplot import PlotLossesKeras
 ### Custom imports
 from functions import *
 
-def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1):
+def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, callbacks=None):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
@@ -63,31 +63,36 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
             if dropout != 0: model.add(Dropout(dropout))
             model.add(Dense(1, activation='sigmoid'))
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-            model.summary()
+#             model.summary()
 
             # stops if val_loss doesn't improve for [patience] straight epochs
             early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
                                                      patience=patience, 
-                                                     verbose=1) 
+                                                     verbose=0) 
 
             # saves weights from the epoch with lowest val_loss 
             weights_path = os.path.join(save_folder,"weights_loop{}.h5".format(loop))
             checkpoint = callbacks.ModelCheckpoint(weights_path, 
                                                    monitor='val_loss', 
                                                    mode='auto', 
-                                                   verbose=1, 
+                                                   verbose=0, 
                                                    save_best_only=True, 
                                                    save_weights_only=True)
 
-
+            callbacks_list = [PlotLossesKeras(),checkpoint,early_stopping]
+            if args.callbacks is not None:
+                callbacks_list = callbacks_list + args.callbacks
+                
+            print(callbacks_list)
+            
             ### Train!
             history = model.fit(x_train, y_train, 
                         epochs=epochs, 
                         sample_weight=sample_weight,
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
-                        callbacks = [PlotLossesKeras(),checkpoint,early_stopping],
-                        verbose = 1,
+                        callbacks = callbacks_list,
+                        verbose = 0,
                        )
             best_losses.append(np.min(history.history['loss']))
         
@@ -125,7 +130,7 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                 if dropout != 0: model.add(Dropout(dropout))
                 model.add(Dense(1, activation='sigmoid'))
                 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-                model.summary()
+#                 model.summary()
 
                 # stops if val_loss doesn't improve for [patience] straight epochs
                 early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
@@ -210,6 +215,8 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
     
     ### Save test DataFrame for future plotting
     test.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
+    
+    return(test)
     
     
 
