@@ -30,6 +30,31 @@ plt.rcParams.update({
     "legend.fontsize": 11
 })
 
+#function from David's file via_machinae.py
+def angular_distance(angle1,angle2):
+    # inputs are np arrays of [ra,dec]
+    deltara=np.minimum(np.minimum(np.abs(angle1[:,0]-angle2[:,0]+360),np.abs(angle1[:,0]-angle2[:,0])),\
+                          np.abs(angle1[:,0]-angle2[:,0]-360))
+    deltadec=np.abs(angle1[:,1]-angle2[:,1])
+    return np.sqrt(deltara**2+deltadec**2)
+
+def FilterGD1(stars, gd1_stars):
+    gd1stars=np.zeros(len(stars))
+    for x in gd1_stars:
+        ra=x[0]
+        dec=x[1]
+        pmra=x[2]
+        pmdec=x[3]
+        foundlist=angular_distance(np.dstack((stars[:,3],stars[:,2]))[0],np.array([[ra,dec]]))
+        foundlist=np.sqrt(foundlist**2+(stars[:,0]-pmdec)**2+(stars[:,1]-pmra)**2)   
+        foundlist=foundlist<.0001
+        if len(np.argwhere(foundlist))>1:
+            print(foundlist)
+        if len(np.argwhere(foundlist))==1:
+            gd1stars+=foundlist
+    gd1stars=gd1stars.astype('bool')
+    return gd1stars,stars[gd1stars]
+
 def get_random_file(glob_path):
     file = random.choice(glob(glob_path))
     return(file)
@@ -150,7 +175,21 @@ def visualize_stream(df, save_folder=None):
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"stream_velocities.png"))
         
-def signal_sideband(df, stream, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None):
+    if "stream" in df.keys():
+        plt.figure(dpi=150) 
+        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,30) 
+        plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, 
+                 bins=bins, label="Background");
+        plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, 
+                 bins=bins, label="GD1")
+        plt.title('GD1 Tail')
+        plt.xlabel(r'$\mu_\delta$')
+        plt.ylabel('Counts (Normalized)')
+        plt.legend();
+    if save_folder is not None:
+        plt.savefig(os.path.join(save_folder,"mu_delta_zoomed_in.png"))
+        
+def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None):
     if sb_min is not None:
         sb_min = sb_min
         sb_max = sb_max
@@ -223,8 +262,8 @@ def signal_sideband(df, stream, save_folder=None, sb_min=None, sb_max=None, sr_m
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_delta.png"))
     
-    print("Sideband region: [{},{}]".format(sb_min,sb_max))
-    print("Signal region: [{},{}]".format(sr_min,sr_max))
+    print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
+    print("Signal region: [{:.1f},{:.1f}]".format(sr_min,sr_max))
     
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
@@ -233,7 +272,6 @@ def signal_sideband(df, stream, save_folder=None, sb_min=None, sb_max=None, sr_m
     sb = df_slice[df_slice.label == 0]
     print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
     
-    print(sb_min, sb_max)
     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
     bins = np.linspace(sb_min,sb_max,50)
     plt.hist(sr.μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
@@ -247,7 +285,7 @@ def signal_sideband(df, stream, save_folder=None, sb_min=None, sb_max=None, sr_m
     if "stream" in df.keys():
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
         bins = np.linspace(sb_min,sb_max,50)
-        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True)
+        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["deeppink","lightgray"])
         ax.set_yscale('log')
         ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
         ax.set_ylabel("Counts")
@@ -367,41 +405,39 @@ def plot_results(test, save_folder=None):
         if save_folder is not None: 
             plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
 
-    print("===================")
-    for x in [0.001, 0.01, 0.1, 1, 5, 10, 20]: # percentages
-        top_stars = test[(test['nn_score'] >= test['nn_score'].quantile((100-x)/100))]
-        if "stream" in test.keys():
-            stream_stars_in_test_set = test[test.stream == True]
-            if True in top_stars.stream.unique(): 
-                n_perfect_matches = top_stars.stream.value_counts()[True] 
-            else: 
-                n_perfect_matches = 0 
+#     print("===================")
+#     for x in [0.001, 0.01, 0.1, 1, 5, 10, 20]: # percentages
+#         top_stars = test[(test['nn_score'] >= test['nn_score'].quantile((100-x)/100))]
+#         if "stream" in test.keys():
+#             stream_stars_in_test_set = test[test.stream == True]
+#             if True in top_stars.stream.unique(): 
+#                 n_perfect_matches = top_stars.stream.value_counts()[True] 
+#             else: 
+#                 n_perfect_matches = 0 
         
-            print("Top {}% stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
+#             print("Top {}% stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
 
-        plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
-        plt.title('Top {:.3f}\% NN Scores'.format(x))
-        if "stream" in test.keys():
-            plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
-                    color = "lightgray",
-                    label='Stream')
-            plt.scatter(top_stars.α, top_stars.δ, marker='.', 
-                    color = "lightpink",
-                    label="Top Stars\n(Purity = {:.0f}\%)".format(n_perfect_matches/len(top_stars)*100))
-            if True in top_stars.stream.unique(): 
-                plt.scatter(top_stars[top_stars.stream].α, top_stars[top_stars.stream].δ, marker='.', 
-                        color = "crimson",
-                        label='Matches')
-        else:
-            plt.scatter(top_stars.α, top_stars.δ, marker='.', 
-                    color = "crimson",
-                    label="Top Stars") 
-        plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
-        plt.xlim(test.α.min(),test.α.max())
-        plt.ylim(test.δ.min(),test.δ.max())
-        plt.xlabel(r"$\alpha$ [\textdegree]")
-        plt.ylabel(r"$\delta$ [\textdegree]")
-        if save_folder is not None: 
-            plt.savefig(os.path.join(save_folder,"top_{}%_stars.png".format(x)))
-
-    
+#         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
+#         plt.title('Top {:.3f}\% NN Scores'.format(x))
+#         if "stream" in test.keys():
+#             plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
+#                     color = "lightgray",
+#                     label='Stream')
+#             plt.scatter(top_stars.α, top_stars.δ, marker='.', 
+#                     color = "lightpink",
+#                     label="Top Stars\n(Purity = {:.0f}\%)".format(n_perfect_matches/len(top_stars)*100))
+#             if True in top_stars.stream.unique(): 
+#                 plt.scatter(top_stars[top_stars.stream].α, top_stars[top_stars.stream].δ, marker='.', 
+#                         color = "crimson",
+#                         label='Matches')
+#         else:
+#             plt.scatter(top_stars.α, top_stars.δ, marker='.', 
+#                     color = "crimson",
+#                     label="Top Stars") 
+#         plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
+#         plt.xlim(test.α.min(),test.α.max())
+#         plt.ylim(test.δ.min(),test.δ.max())
+#         plt.xlabel(r"$\alpha$ [\textdegree]")
+#         plt.ylabel(r"$\delta$ [\textdegree]")
+#         if save_folder is not None: 
+#             plt.savefig(os.path.join(save_folder,"top_{}%_stars.png".format(x)))
