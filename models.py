@@ -23,7 +23,7 @@ from livelossplot import PlotLossesKeras
 ### Custom imports
 from functions import *
 
-def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, callbacks=None):
+def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, other_callbacks=None):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
@@ -35,8 +35,8 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
     y_train, y_val, y_test = [train.label, validate.label, test.label]
     
     if 'weight' in df_slice.keys():
-        print("Using sample weights")
         sample_weight = train.weight
+        print("Using stream weight = {}".format(train.weight.unique().max()))
     else:
         print("Not using sample weights")
         sample_weight = None
@@ -80,11 +80,9 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                                                    save_weights_only=True)
 
             callbacks_list = [PlotLossesKeras(),checkpoint,early_stopping]
-            if args.callbacks is not None:
-                callbacks_list = callbacks_list + args.callbacks
-                
-            print(callbacks_list)
-            
+            if other_callbacks is not None:
+                callbacks_list = callbacks_list + other_callbacks
+                            
             ### Train!
             history = model.fit(x_train, y_train, 
                         epochs=epochs, 
@@ -92,7 +90,7 @@ def train(df_slice, save_folder="./trained_models/test", n_folds=5, epochs=100, 
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
                         callbacks = callbacks_list,
-                        verbose = 0,
+                        verbose = 1,
                        )
             best_losses.append(np.min(history.history['loss']))
         
