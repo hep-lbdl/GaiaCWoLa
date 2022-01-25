@@ -194,35 +194,11 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         sr_max = sr_max
         
     elif stream == "gd1_tail":
-        ### Sowmya's limits
-        # sb_min = -11 
-        # sb_max = -7 
-        # sr_min = -10 
-        # sr_max = -8 
-        
-        ### My optimized limits (hand-chosen)
-        sb_min = -12 # -15
-        sr_min = -11
-        sr_max = -8 # -7
-        sb_max = -6 # -5
-        
-        # ### All signal in the SR
-        # sb_min = -15
-        # sr_min = -13.5
-        # sr_max = -6
-        # sb_max = -5
-        
-        # ### All signal in the SR & SR/SB have roughly equal stats
-        # sb_min = -16
-        # sr_min = -13.5
-        # sr_max = -6
-        # sb_max = -3
-        
         ### Optimized GD1 tail w/ overlapping patches 
-#         sb_min = -7
-#         sr_min = -6
-#         sr_max = -3.1
-#         sb_max = -3
+        sb_min = -7
+        sr_min = -6
+        sr_max = -3.1
+        sb_max = -3
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
