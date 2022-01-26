@@ -86,8 +86,8 @@ def load_file(stream = None, folder = "./gaia_data/", percent_bkg = 100):
                            'streammask': 'stream'}, inplace=True)
 
     elif stream == "gd1_tail":
-        file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
-#         file = os.path.join(folder,"gd1_tail/gd1_tail_optimized_patch.h5")
+#         file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
+        file = os.path.join(folder,"gd1_tail/gd1_tail_optimized_patch.h5")
         df = pd.read_hdf(file)
 
     elif stream == "gaia3":
