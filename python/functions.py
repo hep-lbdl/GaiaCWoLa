@@ -59,7 +59,7 @@ def get_random_file(glob_path):
     file = random.choice(glob(glob_path))
     return(file)
 
-def load_file(stream = None, folder = "./gaia_data/", percent_bkg = 100):
+def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
         file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
