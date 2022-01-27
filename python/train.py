@@ -75,7 +75,7 @@ if __name__ == "__main__":
 #     }
     
     save_label = args.save_label
-    save_folder = os.path.join("./trained_models",save_label)
+    save_folder = os.path.join("../trained_models",save_label)
     os.makedirs(save_folder, exist_ok=True)
     
     ### Save arguments
