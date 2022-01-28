@@ -28,7 +28,7 @@ Then, navigate to one of the example notebooks in the `notebooks` folder (making
 
 Submit a training script: 
 ```sh
-python train.py gd1 # other options: gd1_tail, mock
+python python/train.py gd1 # other options: gd1_tail, mock
 ```
 
 ### Further reading: 
