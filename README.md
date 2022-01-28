@@ -26,6 +26,11 @@ jupyter lab
 ```
 Then, navigate to one of the example notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
 
+Submit a training script: 
+```sh
+python train.py gd1 # other options: gd1_tail, mock
+```
+
 ### Further reading: 
 - [CWoLa Paper](https://arxiv.org/abs/1708.02949)
 - [Via Machinae Paper](https://arxiv.org/abs/2104.12789)
