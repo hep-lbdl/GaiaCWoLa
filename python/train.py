@@ -50,6 +50,7 @@ plt.rcParams.update({
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("stream", default=None, choices = ["gd1", "gd1_tail", "mock"], help="Choose which stream to analyze.")
+    parser.add_argument("--data_folder", default="../gaia_data/", help="Specify the folder where the stream data lies.")
     parser.add_argument("--save_label", default='test', type=str, help="Folder name for saving training outputs & plots.")
     parser.add_argument("--percent_bkg", default=100, type=int, help="Percent of background to train on.")
     parser.add_argument("--layer_size", default=128, type=int, help="Number of nodes per layer.")
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         json.dump(args.__dict__, f, indent=2)
 
     ### Load file & preprocess
-    df, file = load_file(stream = args.stream, folder = os.path.join(base_dir, "gaia_data"), percent_bkg = args.percent_bkg)
+    df, file = load_file(stream = args.stream, folder = args.data_folder, percent_bkg = args.percent_bkg)
         
     visualize_stream(df, save_folder = save_folder)
     
