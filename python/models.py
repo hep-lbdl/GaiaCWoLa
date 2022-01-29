@@ -21,9 +21,9 @@ from livelossplot.keras import PlotLossesCallback
 from livelossplot import PlotLossesKeras
 
 ### Custom imports
-from python.functions import *
+from functions import *
 
-def train(df_slice, save_folder="../trained_models/test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, other_callbacks=None):
+def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, other_callbacks=None):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']

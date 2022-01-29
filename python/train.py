@@ -25,6 +25,8 @@ import wandb
 from wandb.keras import WandbCallback
 
 ### Custom imports
+import sys
+sys.path.append('../')
 from functions import *
 from models import *
 
@@ -74,8 +76,12 @@ if __name__ == "__main__":
 #       "layer_size": args.layer_size, 
 #     }
     
+    from pathlib import Path
+    path = Path(__file__)
+    base_dir = path.parent.parent.absolute() # main working directory
+    
     save_label = args.save_label
-    save_folder = os.path.join("../trained_models",save_label)
+    save_folder = os.path.join(base_dir, "trained_models", save_label)
     os.makedirs(save_folder, exist_ok=True)
     
     ### Save arguments
@@ -83,7 +89,7 @@ if __name__ == "__main__":
         json.dump(args.__dict__, f, indent=2)
 
     ### Load file & preprocess
-    df, file = load_file(stream = args.stream, percent_bkg = args.percent_bkg)
+    df, file = load_file(stream = args.stream, folder = os.path.join(base_dir, "gaia_data"), percent_bkg = args.percent_bkg)
         
     visualize_stream(df, save_folder = save_folder)
     
