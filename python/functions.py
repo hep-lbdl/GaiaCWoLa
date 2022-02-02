@@ -174,7 +174,7 @@ def visualize_stream(df, save_folder=None):
         
     if "stream" in df.keys():
         plt.figure(dpi=150) 
-        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,30) 
+        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,40) 
         plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, 
                  bins=bins, label="Background");
         plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, 

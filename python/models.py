@@ -90,7 +90,7 @@ def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, la
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
                         callbacks = callbacks_list,
-                        verbose = 1,
+                        verbose = 0,
                        )
             best_losses.append(np.min(history.history['loss']))
         
