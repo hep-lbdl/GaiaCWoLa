@@ -23,7 +23,7 @@ from functions import *
 from models import *
 
 ### GPU Setup
-os.environ["CUDA_VISIBLE_DEVICES"] = '2' # pick a number < 4 on ML4HEP; < 3 on Voltan 
+os.environ["CUDA_VISIBLE_DEVICES"] = '3' # pick a number < 4 on ML4HEP; < 3 on Voltan 
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         else:
             visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
             target_stream.append(df[df.stream])                
-            df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+            df_train = signal_sideband(df, stream = "mock", save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
                             sb_min = df[df.stream].μ_δ.min(),
                             sr_min = df[df.stream].μ_δ.min()+1,
                             sr_max = df[df.stream].μ_δ.max()-1,
@@ -143,24 +143,23 @@ if __name__ == "__main__":
         ### Do this at each iteration in case the training stops early
         all_gd1_stars = pd.concat([df for df in target_stream])
         cwola_stars = pd.concat([df for df in top_stars])
-        all_gd1_stars.to_hdf(save_folder+"/patches/patch{}/all_gd1_stars.h5".format(str(patch_id)), "df")
-        cwola_stars.to_hdf(save_folder+"/patches/patch{}/cwola_stars.h5".format(str(patch_id)), "df")
+        all_gd1_stars.to_hdf(save_folder+"/all_gd1_stars.h5", "df")
+        cwola_stars.to_hdf(save_folder+"/cwola_stars.h5", "df")
                      
-    ### Make Via Machinae plot
-    plt.figure(dpi=200, figsize=(12,4), tight_layout=True)
-    plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
-                color="lightgray", label="GD1")
-    plt.scatter(cwola_stars[cwola_stars.stream == False].α, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
-                color="darkorange", label="CWoLa (Non-Match)")
-    plt.scatter(cwola_stars[cwola_stars.stream].α, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
-                color="crimson", label="CWoLa (Match)")
-    plt.legend()
-    plt.xlabel(r"$\alpha$ [\textdegree]");
-    plt.ylabel(r"$\delta$ [\textdegree]");
-    plt.xlim(115,230);
-    plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
+        ### Make Via Machinae plot
+        plt.figure(dpi=200, figsize=(12,4), tight_layout=True)
+        plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
+                    color="lightgray", label="GD1")
+        plt.scatter(cwola_stars[cwola_stars.stream == False].α, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
+                    color="darkorange", label="CWoLa (Non-Match)")
+        plt.scatter(cwola_stars[cwola_stars.stream].α, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
+                    color="crimson", label="CWoLa (Match)")
+        plt.legend()
+        plt.xlabel(r"$\alpha$ [\textdegree]");
+        plt.ylabel(r"$\delta$ [\textdegree]");
+        plt.xlim(115,230);
+        plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
                      
     print("CWoLa-identified stars:", cwola_stars.stream.value_counts())
-                
     print("Finished in {:,.1f} seconds.".format(time.time() - t0))
           
