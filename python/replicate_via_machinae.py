@@ -12,14 +12,6 @@ import argparse
 import json
 import time 
 from random import randrange
-
-# ### ML imports
-# from keras.layers import Input, Dense, Dropout
-# from keras.models import Model, Sequential
-# from keras import callbacks, regularizers
-# from sklearn.metrics import roc_curve, auc,roc_auc_score
-# from sklearn.model_selection import train_test_split
-# from sklearn import preprocessing
 import tensorflow as tf
 # import wandb
 # from wandb.keras import WandbCallback
@@ -31,7 +23,7 @@ from functions import *
 from models import *
 
 ### GPU Setup
-os.environ["CUDA_VISIBLE_DEVICES"] = '3' # pick a number < 4 on ML4HEP; < 3 on Voltan 
+os.environ["CUDA_VISIBLE_DEVICES"] = '2' # pick a number < 4 on ML4HEP; < 3 on Voltan 
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -50,6 +42,7 @@ plt.rcParams.update({
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_label", default='test', type=str, help="Folder name for saving training outputs & plots.")
+    parser.add_argument("--n_patches", default=21, type=int, help="Number of patches to train over.")
     parser.add_argument("--layer_size", default=128, type=int, help="Number of nodes per layer.")
     parser.add_argument("--patience", default=30, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
     parser.add_argument("--epochs", default=1000, type=int, help="Number of training epochs.")
@@ -78,60 +71,59 @@ if __name__ == "__main__":
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
     visualize_stream(df_all, save_folder=save_folder)
     
-    limits = pd.DataFrame([
-                      [0, -15, -13.5, -11, -10],
-                      [1, -14, -13, -12, -11],
-                      [2, -14, -13, -11.5, -10],
-                      [3, -14, -13, -11, -10],
-                      [4, -15, -14, -12, -11],
-                      [5, -15, -14, -12, -11],
-                      [6, -5, -4, -2.5, 2],
-                      [7, -10, -9.5, -8, -7],
-                      [8, -9, -8, -7, -6],
-                      [9, -9, -8, -7, -6],
-                      [10, -12.5, -12, -11, -10],
-                      [11, -14, -13, -11, -10],
-                      [12, -14, -13, -12, -11],
-                      [13, -6, -5, -4, -2],
-                      [14, -9, -8, -7, -6],
-                      [15, -9, -8, -7, -6],
-                      [16, -14, -13, -11, -10],
-                      [17, -14, -13, -12, -11],
-                      [18, -6, -5, -3, -2],
-                      [19, -9, -8, -6, -5],
-                      [20, -9, -8.5, -6, -5.5],
-                      ],
-                      columns=["patch_id","sb_min","sr_min","sr_max","sb_max"])
+#     limits = pd.DataFrame([
+#                       [0, -15, -13.5, -11, -10],
+#                       [1, -14, -13, -12, -11],
+#                       [2, -14, -13, -11.5, -10],
+#                       [3, -14, -13, -11, -10],
+#                       [4, -15, -14, -12, -11],
+#                       [5, -15, -14, -12, -11],
+#                       [6, -5, -4, -2.5, 2],
+#                       [7, -10, -9.5, -8, -7],
+#                       [8, -9, -8, -7, -6],
+#                       [9, -9, -8, -7, -6],
+#                       [10, -12.5, -12, -11, -10],
+#                       [11, -14, -13, -11, -10],
+#                       [12, -14, -13, -12, -11],
+#                       [13, -6, -5, -4, -2],
+#                       [14, -9, -8, -7, -6],
+#                       [15, -9, -8, -7, -6],
+#                       [16, -14, -13, -11, -10],
+#                       [17, -14, -13, -12, -11],
+#                       [18, -6, -5, -3, -2],
+#                       [19, -9, -8, -6, -5],
+#                       [20, -9, -8.5, -6, -5.5],
+#                       ],
+#                       columns=["patch_id","sb_min","sr_min","sr_max","sb_max"])
     
     target_stream = []
     top_stars = []
 
     ## Scan over patches
+    n_patches = args.n_patches
+    alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
+    deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
+    limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
+
     for patch_id in tqdm(limits.patch_id.unique()):
-        α_min = df_all[df_all.patch_id == patch_id].α.min()
-        α_max = df_all[df_all.patch_id == patch_id].α.max()
-        δ_min = df_all[df_all.patch_id == patch_id].δ.min()
-        δ_max = df_all[df_all.patch_id == patch_id].δ.max()
-
-        df = df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
-                    (δ_min < df_all.δ) & (df_all.δ < δ_max)]
-
-        if np.sum(df.stream)/len(df) < 0.0001: # skip patches with hardly any stream stars
+        α_min = limits.iloc[patch_id]["α_center"]-10
+        α_max = limits.iloc[patch_id]["α_center"]+10
+        δ_min = limits.iloc[patch_id]["δ_center"]-10
+        δ_max = limits.iloc[patch_id]["δ_center"]+10
+        df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
+                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])        
+        if np.sum(df.stream)/len(df) < 0.00001: # skip patches with hardly any stream stars
             continue
         else:
-            try: 
-                visualize_stream(df)
-            except: 
-                continue
-            target_stream.append(df[df.stream])  
-            df_train = signal_sideband(df,
-                            sb_min = float(limits[limits.patch_id == patch_id].sb_min),
-                            sr_min = float(limits[limits.patch_id == patch_id].sr_min),
-                            sr_max = float(limits[limits.patch_id == patch_id].sr_max),
-                            sb_max = float(limits[limits.patch_id == patch_id].sb_max),
+            visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
+            target_stream.append(df[df.stream])                
+            df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+                            sb_min = df[df.stream].μ_δ.min(),
+                            sr_min = df[df.stream].μ_δ.min()+1,
+                            sr_max = df[df.stream].μ_δ.max()-1,
+                            sb_max = df[df.stream].μ_δ.max()
                             )
-
-#             tf.keras.backend.clear_session()
+            tf.keras.backend.clear_session()
             test = train(df_train, 
               n_folds = args.n_folds, 
               best_of_n_loops = args.best_of_n_loops,
