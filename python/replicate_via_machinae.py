@@ -139,9 +139,12 @@ if __name__ == "__main__":
             patch_top_stars = test.sort_values('nn_score',ascending=False)[:100]
             patch_top_stars.to_hdf(save_folder+"/patches/patch{}/top_stars.h5".format(str(patch_id)), "df")
             top_stars.append(patch_top_stars)
-    
-    all_gd1_stars = pd.concat([df for df in target_stream])
-    cwola_stars = pd.concat([df for df in top_stars])
+            
+        ### Do this at each iteration in case the training stops early
+        all_gd1_stars = pd.concat([df for df in target_stream])
+        cwola_stars = pd.concat([df for df in top_stars])
+        all_gd1_stars.to_hdf(save_folder+"/patches/patch{}/all_gd1_stars.h5".format(str(patch_id)), "df")
+        cwola_stars.to_hdf(save_folder+"/patches/patch{}/cwola_stars.h5".format(str(patch_id)), "df")
                      
     ### Make Via Machinae plot
     plt.figure(dpi=200, figsize=(12,4), tight_layout=True)
@@ -154,7 +157,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.xlabel(r"$\alpha$ [\textdegree]");
     plt.ylabel(r"$\delta$ [\textdegree]");
-    plt.xlim(120,220);
+    plt.xlim(115,230);
     plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
                      
     print("CWoLa-identified stars:", cwola_stars.stream.value_counts())
