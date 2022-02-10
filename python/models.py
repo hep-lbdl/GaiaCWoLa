@@ -133,13 +133,13 @@ def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, la
                 # stops if val_loss doesn't improve for [patience] straight epochs
                 early_stopping = callbacks.EarlyStopping(monitor='val_loss', 
                                                          patience=patience, 
-                                                         verbose=1) 
+                                                         verbose=0) 
 
                 # saves weights from the epoch with lowest val_loss 
                 checkpoint = callbacks.ModelCheckpoint(os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number,loop)), 
                                                        monitor='val_loss', 
                                                        mode='auto', 
-                                                       verbose=1, 
+                                                       verbose=0, 
                                                        save_best_only=True, 
                                                        save_weights_only=True)
 
