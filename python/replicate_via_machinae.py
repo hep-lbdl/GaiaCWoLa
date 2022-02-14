@@ -22,23 +22,6 @@ sys.path.append('./python')
 from functions import *
 from models import *
 
-### GPU Setup
-os.environ["CUDA_VISIBLE_DEVICES"] = '3' # pick a number < 4 on ML4HEP; < 3 on Voltan 
-physical_devices = tf.config.list_physical_devices('GPU') 
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
-### Plot setup
-plt.rcParams.update({
-    'figure.dpi': 150,
-    "text.usetex": True,
-    "pgf.rcfonts": False,
-    "font.family": "serif",
-    "font.size": 15,
-    "xtick.labelsize": 11,
-    "ytick.labelsize": 11,
-    "legend.fontsize": 11
-})
-
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_label", default='test', type=str, help="Folder name for saving training outputs & plots.")
@@ -52,12 +35,31 @@ def get_args():
     parser.add_argument("--n_folds", default=1, type=int, help="Number of k-folds.")
     parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
     parser.add_argument("--best_of_n_loops", default=1, type=int, help="Repeats the training N times and picks the best weights.")
+    parser.add_argument("--gpu_id", default=0, type=int, help="Choose a GPU to run over (or -1 if you want to use CPU only).")
 
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = get_args()
     t0 = time.time()
+    
+    ### GPU Setup
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
+    if args.gpu_id != -1: 
+        physical_devices = tf.config.list_physical_devices('GPU') 
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+    ### Plot setup
+    plt.rcParams.update({
+        'figure.dpi': 150,
+        "text.usetex": True,
+        "pgf.rcfonts": False,
+        "font.family": "serif",
+        "font.size": 15,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+        "legend.fontsize": 11
+    })
     
     save_label = args.save_label
     save_folder = os.path.join("./trained_models",save_label)
@@ -106,10 +108,10 @@ if __name__ == "__main__":
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
 
     for patch_id in tqdm(limits.patch_id.unique()):
-        α_min = limits.iloc[patch_id]["α_center"]-10
-        α_max = limits.iloc[patch_id]["α_center"]+10
-        δ_min = limits.iloc[patch_id]["δ_center"]-10
-        δ_max = limits.iloc[patch_id]["δ_center"]+10
+        α_min = limits.iloc[patch_id]["α_center"]-15
+        α_max = limits.iloc[patch_id]["α_center"]+15
+        δ_min = limits.iloc[patch_id]["δ_center"]-15
+        δ_max = limits.iloc[patch_id]["δ_center"]+15
         df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
                      (δ_min < df_all.δ) & (df_all.δ < δ_max)])        
         if np.sum(df.stream)/len(df) < 0.00001: # skip patches with hardly any stream stars
