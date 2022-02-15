@@ -17,13 +17,11 @@ from keras import callbacks, regularizers
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from livelossplot.keras import PlotLossesCallback
-from livelossplot import PlotLossesKeras
 
 ### Custom imports
 from functions import *
 
-def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, layer_size=10, dropout=0, l2_reg=0, patience=10, best_of_n_loops=1, other_callbacks=None):
+def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds, best_of_n_loops, save_folder, other_callbacks=None):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
@@ -79,9 +77,9 @@ def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, la
                                                    save_best_only=True, 
                                                    save_weights_only=True)
 
-            callbacks_list = [PlotLossesKeras(),checkpoint,early_stopping]
+            callbacks_list = [checkpoint,early_stopping]
             if other_callbacks is not None:
-                callbacks_list = callbacks_list + other_callbacks
+                callbacks_list = callbacks_list + [other_callbacks]
                             
             ### Train!
             history = model.fit(x_train, y_train, 
@@ -90,7 +88,7 @@ def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, la
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
                         callbacks = callbacks_list,
-                        verbose = 0,
+                        verbose = 1,
                        )
             best_losses.append(np.min(history.history['loss']))
         
@@ -150,7 +148,7 @@ def train(df_slice, save_folder="test", n_folds=5, epochs=100, batch_size=32, la
                                 callbacks = [
                                              # PlotLossesKeras(),
                                              checkpoint,early_stopping],
-                                verbose = 1,
+                                verbose = 0,
                                )
                 best_losses.append(np.min(history.history['loss']))
 
