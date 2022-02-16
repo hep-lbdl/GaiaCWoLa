@@ -148,6 +148,7 @@ def visualize_stream(df, save_folder=None):
         ax.set_title("Stream Only", fontsize=16);
         
     if save_folder is not None:
+        os.makedirs(save_folder, exist_ok=True)
         plt.savefig(os.path.join(save_folder,"stream_position.png"))
     
     bins = np.linspace(-25,10,100)
@@ -174,7 +175,7 @@ def visualize_stream(df, save_folder=None):
         
     if "stream" in df.keys():
         plt.figure(dpi=150) 
-        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,30) 
+        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,40) 
         plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, 
                  bins=bins, label="Background");
         plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, 
@@ -233,6 +234,7 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
     plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
     plt.ylabel("Counts")
     if save_folder is not None:
+        os.makedirs(save_folder, exist_ok=True)
         plt.savefig(os.path.join(save_folder,"mu_delta.png"))
     
     print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
