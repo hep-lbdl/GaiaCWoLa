@@ -72,38 +72,13 @@ if __name__ == "__main__":
     ### Load file & preprocess
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
     visualize_stream(df_all, save_folder=save_folder)
-    
-#     limits = pd.DataFrame([
-#                       [0, -15, -13.5, -11, -10],
-#                       [1, -14, -13, -12, -11],
-#                       [2, -14, -13, -11.5, -10],
-#                       [3, -14, -13, -11, -10],
-#                       [4, -15, -14, -12, -11],
-#                       [5, -15, -14, -12, -11],
-#                       [6, -5, -4, -2.5, 2],
-#                       [7, -10, -9.5, -8, -7],
-#                       [8, -9, -8, -7, -6],
-#                       [9, -9, -8, -7, -6],
-#                       [10, -12.5, -12, -11, -10],
-#                       [11, -14, -13, -11, -10],
-#                       [12, -14, -13, -12, -11],
-#                       [13, -6, -5, -4, -2],
-#                       [14, -9, -8, -7, -6],
-#                       [15, -9, -8, -7, -6],
-#                       [16, -14, -13, -11, -10],
-#                       [17, -14, -13, -12, -11],
-#                       [18, -6, -5, -3, -2],
-#                       [19, -9, -8, -6, -5],
-#                       [20, -9, -8.5, -6, -5.5],
-#                       ],
-#                       columns=["patch_id","sb_min","sr_min","sr_max","sb_max"])
-    
-    target_stream = []
-    top_stars = []
 
     ## Scan over patches
+    target_stream = []
+    top_stars = []
     n_patches = args.n_patches
-    alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
+#     alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
+    alphas = np.linspace(180, df_all[df_all.stream].α.max(), n_patches)
     deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
 
@@ -132,13 +107,15 @@ if __name__ == "__main__":
               layer_size = args.layer_size, 
               batch_size = args.batch_size, 
               dropout = args.dropout, 
+              l2_reg = args.l2_reg,
               epochs = args.epochs, 
               patience = args.patience,
               save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
             )
 
-            # Grab top 100 stars
-            patch_top_stars = test.sort_values('nn_score',ascending=False)[:100]
+            # Grab up to the top 100 stars (less if there are actually not 100 stream stars in the test set)
+            n_top_stars = np.min([len(test[test.stream]),100])
+            patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
             patch_top_stars.to_hdf(save_folder+"/patches/patch{}/top_stars.h5".format(str(patch_id)), "df")
             top_stars.append(patch_top_stars)
             
