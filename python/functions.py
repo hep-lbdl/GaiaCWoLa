@@ -27,7 +27,8 @@ plt.rcParams.update({
     "font.size": 15,
     "xtick.labelsize": 11,
     "ytick.labelsize": 11,
-    "legend.fontsize": 11
+    "legend.fontsize": 11,
+    "figure.max_open_warning": False,
 })
 
 #function from David's file via_machinae.py

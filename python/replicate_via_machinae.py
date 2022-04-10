@@ -54,19 +54,6 @@ if __name__ == "__main__":
         print("Using CPU only")
         os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"]="-1"
-
-    ### Plot setup
-    plt.rcParams.update({
-        'figure.dpi': 150,
-        "text.usetex": True,
-        "pgf.rcfonts": False,
-        "font.family": "serif",
-        "font.size": 15,
-        "xtick.labelsize": 11,
-        "ytick.labelsize": 11,
-        "legend.fontsize": 11,
-        "figure.max_open_warning": False,
-    })
     
     save_label = args.save_label
     save_folder = os.path.join("./trained_models",save_label)

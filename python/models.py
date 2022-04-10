@@ -188,12 +188,12 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
         shutil.copy(os.path.join(save_folder,"kfold{}_best_weights.h5".format(best_fold_number)), os.path.join(save_folder,"best_weights.h5"))
         
         ### Remove the unused loop weights
-        fileList = glob("kfold*_weights.h5")
+        fileList = glob(os.path.join(save_folder,"kfold*_weights.h5"))
         for filePath in fileList:
             try:
                 os.remove(filePath)
             except:
-                print("Error while deleting file : ", filePath)
+                print("Error while deleting file: ", filePath)
 
     ### Save training losses & accuracies
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
