@@ -21,7 +21,7 @@ from sklearn import preprocessing
 ### Custom imports
 from functions import *
 
-def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds, best_of_n_loops, save_folder, other_callbacks=None):
+def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds, best_of_n_loops, save_folder, other_callbacks=None, verbose=True):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df_slice.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']
@@ -34,9 +34,9 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
     
     if 'weight' in df_slice.keys():
         sample_weight = train.weight
-        print("Using stream weight = {}".format(train.weight.unique().max()))
+        if verbose: print("Using stream weight = {}".format(train.weight.unique().max()))
     else:
-        print("Not using sample weights")
+        if verbose: print("Not using sample weights")
         sample_weight = None
 
     from sklearn.preprocessing import StandardScaler
@@ -45,7 +45,7 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
     x_test = sc.transform(x_test)
     x_val = sc.transform(x_val)
 
-    print("Training on {:,} events.".format(len(train)))
+    if verbose: print("Training on {:,} events.".format(len(train)))
 
     if n_folds <= 1:  # train without k-folding
         best_losses = []
@@ -88,13 +88,14 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
                         batch_size=batch_size,
                         validation_data=(x_val,y_val),
                         callbacks = callbacks_list,
-                        verbose = 1,
+                        verbose = int(verbose),
                        )
             best_losses.append(np.min(history.history['loss']))
         
         ### Load best weights
-        print("Best losses:", best_losses)
-        print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
+        if verbose:
+            print("Best losses:", best_losses)
+            print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
         best_weights_path = os.path.join(save_folder,"weights_loop{}.h5".format(np.argmin(best_losses)))
         model.load_weights(best_weights_path)
 
@@ -112,7 +113,7 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
         fold_number = 0
 
         for train, validate in kfold.split(inputs, targets):
-            print("\nTraining fold #{}...".format(fold_number))
+            if verbose: print("\nTraining fold #{}...".format(fold_number))
             best_losses = []
             for loop in range(best_of_n_loops): 
                 ### Define model architecture 
@@ -153,36 +154,47 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
                 best_losses.append(np.min(history.history['loss']))
 
             ### Load best weights
-            print("Best losses:", best_losses)
-            print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
+            if verbose: 
+                print("Best losses:", best_losses)
+                print("Loading weights from best loop, i.e. loop #{}.".format(np.argmin(best_losses)))
             weights_path = os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number, np.argmin(best_losses)))
             model.load_weights(weights_path)
             shutil.copy(os.path.join(save_folder,"kfold{}_loop{}_weights.h5".format(fold_number, np.argmin(best_losses))),os.path.join(save_folder,"kfold{}_best_weights.h5".format(fold_number)))
-                
+            
             # Evaluate trained model
             scores = model.evaluate(inputs[validate], targets[validate], verbose=0)
             y_pred = model.predict(inputs[validate]).ravel()
-            print('Score for fold {}: {} of {:.2f}; {} of {:.2f}%'.format(fold_number,model.metrics_names[0], scores[0],model.metrics_names[1],scores[1]*100))
+            if verbose: print('Score for fold {}: {} of {:.2f}; {} of {:.2f}%'.format(fold_number,model.metrics_names[0], scores[0],model.metrics_names[1],scores[1]*100))
             acc_per_fold.append(scores[1] * 100)
             loss_per_fold.append(scores[0])
             fold_number += 1
 
-        # == Provide average scores ==
-        print('------------------------------------------------------------------------')
-        print('Score per fold')
-        for i in range(0, len(acc_per_fold)):
+        if verbose:
+            # == Provide average scores ==
             print('------------------------------------------------------------------------')
-            print('> Fold {} - Loss: {:.2f} - Accuracy: {:.2f}%'.format(i+1, loss_per_fold[i], acc_per_fold[i]))
-        print('------------------------------------------------------------------------')
-        print('Average scores for all folds:')
-        print('> Accuracy: {:.2f} (+- {:.2f})'.format(np.mean(acc_per_fold),np.std(acc_per_fold)))
-        print('> Loss: {:.2f}'.format(np.mean(loss_per_fold)))
-        print('------------------------------------------------------------------------')
-        print('Best fold number (lowest loss): {}'.format(np.argmin(loss_per_fold)))
+            print('Score per fold')
+            for i in range(0, len(acc_per_fold)):
+                print('------------------------------------------------------------------------')
+                print('> Fold {} - Loss: {:.2f} - Accuracy: {:.2f}%'.format(i+1, loss_per_fold[i], acc_per_fold[i]))
+            print('------------------------------------------------------------------------')
+            print('Average scores for all folds:')
+            print('> Accuracy: {:.2f} (+- {:.2f})'.format(np.mean(acc_per_fold),np.std(acc_per_fold)))
+            print('> Loss: {:.2f}'.format(np.mean(loss_per_fold)))
+            print('------------------------------------------------------------------------')
+            print('Best fold number (lowest loss): {}'.format(np.argmin(loss_per_fold)))
 
         best_fold_number = np.argmin(loss_per_fold)
         model.load_weights(os.path.join(save_folder,"kfold{}_best_weights.h5".format(best_fold_number)))
+        shutil.copy(os.path.join(save_folder,"kfold{}_best_weights.h5".format(best_fold_number)), os.path.join(save_folder,"best_weights.h5"))
         
+        ### Remove the unused loop weights
+        fileList = glob("kfold*_weights.h5")
+        for filePath in fileList:
+            try:
+                os.remove(filePath)
+            except:
+                print("Error while deleting file : ", filePath)
+
     ### Save training losses & accuracies
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
     ax = axs[0]
@@ -204,10 +216,10 @@ def train(df_slice, layer_size, batch_size, dropout, l2_reg, epochs, patience, n
     test["nn_score"] = model.predict(x_test)
     fake_eff_baseline, real_eff_baseline, thresholds = roc_curve(np.asarray(y_test), test.nn_score)
     auc_baseline = auc(fake_eff_baseline, real_eff_baseline)
-    print("AUC: {:.3f}".format(auc_baseline))
+    if verbose: print("AUC: {:.3f}".format(auc_baseline))
 
     ### Plot scores:
-    plot_results(test, save_folder=save_folder)
+    plot_results(test, save_folder=save_folder, verbose=verbose)
     
     ### Save test DataFrame for future plotting
     test.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")

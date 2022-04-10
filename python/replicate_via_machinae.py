@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 import matplotlib 
 matplotlib.use('Agg') # to not generate plots via X11
 import matplotlib.pyplot as plt
@@ -13,6 +14,7 @@ import json
 import time 
 from random import randrange
 import tensorflow as tf
+from multiprocessing import Pool, cpu_count
 # import wandb
 # from wandb.keras import WandbCallback
 
@@ -44,10 +46,14 @@ if __name__ == "__main__":
     t0 = time.time()
     
     ### GPU Setup
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
     if args.gpu_id != -1: 
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
         physical_devices = tf.config.list_physical_devices('GPU') 
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    else: 
+        print("Using CPU only")
+        os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
     ### Plot setup
     plt.rcParams.update({
@@ -58,7 +64,8 @@ if __name__ == "__main__":
         "font.size": 15,
         "xtick.labelsize": 11,
         "ytick.labelsize": 11,
-        "legend.fontsize": 11
+        "legend.fontsize": 11,
+        "figure.max_open_warning": False,
     })
     
     save_label = args.save_label
@@ -77,28 +84,25 @@ if __name__ == "__main__":
     target_stream = []
     top_stars = []
     n_patches = args.n_patches
-#     alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
-    alphas = np.linspace(180, df_all[df_all.stream].α.max(), n_patches)
+    alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
     deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
 
-    for patch_id in tqdm(limits.patch_id.unique()):
-        α_min = limits.iloc[patch_id]["α_center"]-15
-        α_max = limits.iloc[patch_id]["α_center"]+15
-        δ_min = limits.iloc[patch_id]["δ_center"]-15
-        δ_max = limits.iloc[patch_id]["δ_center"]+15
+    def train_on_patch(patch_id):
+        α_min = limits.iloc[patch_id]["α_center"]-10
+        α_max = limits.iloc[patch_id]["α_center"]+10
+        δ_min = limits.iloc[patch_id]["δ_center"]-10
+        δ_max = limits.iloc[patch_id]["δ_center"]+10
         df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
-                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])        
-        if np.sum(df.stream)/len(df) < 0.00001: # skip patches with hardly any stream stars
-            continue
-        else:
+                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])
+        if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
             visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
-            target_stream.append(df[df.stream])                
-            df_train = signal_sideband(df, stream = "mock", save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+            df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
                             sb_min = df[df.stream].μ_δ.min(),
                             sr_min = df[df.stream].μ_δ.min()+1,
                             sr_max = df[df.stream].μ_δ.max()-1,
-                            sb_max = df[df.stream].μ_δ.max()
+                            sb_max = df[df.stream].μ_δ.max(), 
+                            verbose=False,
                             )
             tf.keras.backend.clear_session()
             test = train(df_train, 
@@ -111,34 +115,41 @@ if __name__ == "__main__":
               epochs = args.epochs, 
               patience = args.patience,
               save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+              verbose = False,
             )
 
-            # Grab up to the top 100 stars (less if there are actually not 100 stream stars in the test set)
-            n_top_stars = np.min([len(test[test.stream]),100])
-            patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
-            patch_top_stars.to_hdf(save_folder+"/patches/patch{}/top_stars.h5".format(str(patch_id)), "df")
-            top_stars.append(patch_top_stars)
-            
-        ### Do this at each iteration in case the training stops early
-        all_gd1_stars = pd.concat([df for df in target_stream])
-        cwola_stars = pd.concat([df for df in top_stars])
-        all_gd1_stars.to_hdf(save_folder+"/all_gd1_stars.h5", "df")
-        cwola_stars.to_hdf(save_folder+"/cwola_stars.h5", "df")
-                     
-        ### Make Via Machinae plot
-        plt.figure(dpi=200, figsize=(12,4), tight_layout=True)
-        plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
-                    color="lightgray", label="GD1")
-        plt.scatter(cwola_stars[cwola_stars.stream == False].α, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
-                    color="darkorange", label="CWoLa (Non-Match)")
-        plt.scatter(cwola_stars[cwola_stars.stream].α, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
-                    color="crimson", label="CWoLa (Match)")
-        plt.legend()
-        plt.xlabel(r"$\alpha$ [\textdegree]");
-        plt.ylabel(r"$\delta$ [\textdegree]");
-        plt.xlim(115,230);
-        plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
-                     
+        print("Finished Patch #{}".format(str(patch_id)))
+        return test
+
+    pool = Pool(processes=8) # max = cpu_count()
+    results = pool.map(train_on_patch, limits.patch_id.unique())
+    pool.close()
+    pool.join()    
+    
+    all_gd1_stars = []
+    cwola_stars = []
+
+    for test in results:
+        n_top_stars = np.min([len(test[test.stream]),100])
+        patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
+        all_gd1_stars.append(test[test.stream])
+        cwola_stars.append(patch_top_stars)
+
+    all_gd1_stars = pd.concat([df for df in all_gd1_stars])
+    cwola_stars = pd.concat([df for df in cwola_stars])
+
+    plt.figure(dpi=200, figsize=(12,4))
+    plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
+                color="lightgray", label="GD1")
+    plt.scatter(cwola_stars[cwola_stars.stream == False].α, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
+                color="darkorange", label="CWoLa (Non-Match)")
+    plt.scatter(cwola_stars[cwola_stars.stream].α, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
+                color="crimson", label="CWoLa (Match)")
+    plt.legend()
+    plt.xlabel(r"$\alpha$ [\textdegree]");
+    plt.xlim(120,220);
+    plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
+    
     print("CWoLa-identified stars:", cwola_stars.stream.value_counts())
     print("Finished in {:,.1f} seconds.".format(time.time() - t0))
           

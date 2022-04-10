@@ -187,7 +187,7 @@ def visualize_stream(df, save_folder=None):
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_delta_zoomed_in.png"))
         
-def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None):
+def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True):
     if sb_min is not None:
         sb_min = sb_min
         sb_max = sb_max
@@ -237,15 +237,16 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         os.makedirs(save_folder, exist_ok=True)
         plt.savefig(os.path.join(save_folder,"mu_delta.png"))
     
-    print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
-    print("Signal region: [{:.1f},{:.1f}]".format(sr_min,sr_max))
+    if verbose:
+        print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
+        print("Signal region: [{:.1f},{:.1f}]".format(sr_min,sr_max))
     
     df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
     df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
     
     sr = df_slice[df_slice.label == 1]
     sb = df_slice[df_slice.label == 0]
-    print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
+    if verbose: print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
     
     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
     bins = np.linspace(sb_min,sb_max,50)
@@ -260,7 +261,7 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
     if "stream" in df.keys():
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
         bins = np.linspace(sb_min,sb_max,50)
-        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["deeppink","lightgray"])
+        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["deeppink","lightgray"], label=["Stream", "Background"])
         ax.set_yscale('log')
         ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
         ax.set_ylabel("Counts")
@@ -279,13 +280,14 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         except: n_sig_bkg_stars = 0
         try: n_sideband_bkg_stars = sb.stream.value_counts()[False]
         except: n_sideband_bkg_stars = 0
-            
-        print("Signal region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sig_stream_stars, n_sig_bkg_stars,100*n_sig_stream_stars/n_sig_bkg_stars))
-        print("Sideband region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sideband_stream_stars, n_sideband_bkg_stars, 100*n_sideband_stream_stars/n_sideband_bkg_stars))
-        print("f_sig = {:.1f}X f_sideband.".format(n_sig_stream_stars/n_sig_bkg_stars/(n_sideband_stream_stars/n_sideband_bkg_stars)))
+          
+        if verbose:
+            print("Signal region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sig_stream_stars, n_sig_bkg_stars,100*n_sig_stream_stars/n_sig_bkg_stars))
+            print("Sideband region has {:,} stream and {:,} bkg events ({:.2f}%).".format(n_sideband_stream_stars, n_sideband_bkg_stars, 100*n_sideband_stream_stars/n_sideband_bkg_stars))
+            print("f_sig = {:.1f}X f_sideband.".format(n_sig_stream_stars/n_sig_bkg_stars/(n_sideband_stream_stars/n_sideband_bkg_stars)))
     return df_slice
 
-def plot_results(test, save_folder=None):
+def plot_results(test, save_folder=None, verbose=True):
     if save_folder is not None: 
         os.makedirs(save_folder, exist_ok=True)
     fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(8,3), constrained_layout=True)
@@ -334,7 +336,7 @@ def plot_results(test, save_folder=None):
 
         ### Choose a cut to optimize purity
         if not np.isnan(purities).all():
-            print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
+            if verbose: print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
             cut = cuts[np.nanargmax(purities)]
             plt.figure(dpi=150)
             plt.plot(cuts, purities, label="Signal Purity")
@@ -353,7 +355,7 @@ def plot_results(test, save_folder=None):
             else: 
                 n_perfect_matches = 0 
         
-            print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
+            if verbose: print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
 
         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
         plt.title('Top {} Stars'.format(x))
@@ -380,21 +382,21 @@ def plot_results(test, save_folder=None):
         if save_folder is not None: 
             plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
             
-        plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
-        plt.title('Top {} Stars'.format(x))
-        plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
-                    color = "lightgray",
-                    label='Stream')
-        plt.scatter(top_stars.α, top_stars.δ, marker='.', 
-        c = top_stars.nn_score,
-        cmap = "Blues",
-        vmin=top_stars.nn_score.min(),
-        vmax=top_stars.nn_score.max(),
-        label="Top Stars") 
-        plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
-        plt.xlim(test.α.min(),test.α.max())
-        plt.ylim(test.δ.min(),test.δ.max())
-        plt.xlabel(r"$\alpha$ [\textdegree]")
-        plt.ylabel(r"$\delta$ [\textdegree]")
-        if save_folder is not None: 
-            plt.savefig(os.path.join(save_folder,"top_{}_stars_ranked.png".format(x)))
+#         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
+#         plt.title('Top {} Stars'.format(x))
+#         plt.scatter(stream_stars_in_test_set.α, stream_stars_in_test_set.δ, marker='.', 
+#                     color = "lightgray",
+#                     label='Stream')
+#         plt.scatter(top_stars.α, top_stars.δ, marker='.', 
+#         c = top_stars.nn_score,
+#         cmap = "Blues",
+#         vmin=top_stars.nn_score.min(),
+#         vmax=top_stars.nn_score.max(),
+#         label="Top Stars") 
+#         plt.legend(bbox_to_anchor=(1.1, 1), loc='upper left')
+#         plt.xlim(test.α.min(),test.α.max())
+#         plt.ylim(test.δ.min(),test.δ.max())
+#         plt.xlabel(r"$\alpha$ [\textdegree]")
+#         plt.ylabel(r"$\delta$ [\textdegree]")
+#         if save_folder is not None: 
+#             plt.savefig(os.path.join(save_folder,"top_{}_stars_ranked.png".format(x)))
