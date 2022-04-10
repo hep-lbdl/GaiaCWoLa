@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 import matplotlib 
 matplotlib.use('Agg') # to not generate plots via X11
 import matplotlib.pyplot as plt
@@ -55,10 +56,14 @@ if __name__ == "__main__":
     t0 = time.time()
     
     ### GPU Setup
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id) # pick a number < 4 on ML4HEP; < 3 on Voltan; use -1 for CPU only
     if args.gpu_id > -1:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id) # pick a number < 4 on ML4HEP; < 3 on Voltan; use -1 for CPU only
         physical_devices = tf.config.list_physical_devices('GPU') 
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    else:
+        print("Using CPU only")
+        os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
     ### Plot setup
     plt.rcParams.update({
