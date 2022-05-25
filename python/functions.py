@@ -64,6 +64,7 @@ def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
         file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
+        print(file)
         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
         df['stream'] = df['stream']/100
         df['stream'] = df['stream'].astype(bool)
@@ -131,9 +132,9 @@ def visualize_stream(df, save_folder=None):
     bins_α=np.linspace(df.α.min(),df.α.max(),50)
     bins_δ=np.linspace(df.δ.min(),df.δ.max(),50)
     if "stream" in df.keys():
-         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(5.5,3), tight_layout=True)
+         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=200, figsize=(5.5,3), tight_layout=True)
     else:
-         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=150, figsize=(3,3), tight_layout=True)
+         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
     
     if "stream" in df.keys(): ax = axs[0]
     ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ])
@@ -151,12 +152,13 @@ def visualize_stream(df, save_folder=None):
     if save_folder is not None:
         os.makedirs(save_folder, exist_ok=True)
         plt.savefig(os.path.join(save_folder,"stream_position.png"))
+        plt.savefig(os.path.join(save_folder,"stream_position.pdf"))
     
     bins = np.linspace(-25,10,100)
     if "stream" in df.keys():
-         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(6,3), tight_layout=True)
+         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=200, figsize=(6,3), tight_layout=True)
     else:
-         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=150, figsize=(3,3), tight_layout=True)
+         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
     
     if "stream" in df.keys(): ax = axs[0]
     ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins])
@@ -173,6 +175,7 @@ def visualize_stream(df, save_folder=None):
         
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"stream_velocities.png"))
+        plt.savefig(os.path.join(save_folder,"stream_velocities.pdf"))
         
     if "stream" in df.keys():
         plt.figure(dpi=150) 
@@ -382,6 +385,7 @@ def plot_results(test, save_folder=None, verbose=True):
         plt.ylabel(r"$\delta$ [\textdegree]")
         if save_folder is not None: 
             plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
+            plt.savefig(os.path.join(save_folder,"top_{}_stars.pdf".format(x)))
             
 #         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
 #         plt.title('Top {} Stars'.format(x))
