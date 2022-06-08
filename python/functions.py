@@ -63,7 +63,8 @@ def get_random_file(glob_path):
 def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
-        file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
+        file = "../gaia_data/mock_streams/gaiamock_ra156.2_dec57.5_stream_feh-1.6_v3_863.npy"
+#         file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
         print(file)
         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
         df['stream'] = df['stream']/100
@@ -131,20 +132,25 @@ def visualize_stream(df, save_folder=None):
     # bins = np.linspace(-15,15,50)
     bins_α=np.linspace(df.α.min(),df.α.max(),50)
     bins_δ=np.linspace(df.δ.min(),df.δ.max(),50)
+    
+    cmap = "binary"
+    
     if "stream" in df.keys():
          fig, axs = plt.subplots(nrows=1, ncols=2, dpi=200, figsize=(5.5,3), tight_layout=True)
     else:
          fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
     
     if "stream" in df.keys(): ax = axs[0]
-    ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ])
+    ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ], 
+             cmap=cmap)
     ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
     ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
     ax.set_title("Full Dataset", fontsize=16)
     
     if "stream" in df.keys():
         ax = axs[1]
-        ax.hist2d(df[df.stream == True].α,df[df.stream == True].δ, bins=[bins_α,bins_δ])
+        ax.hist2d(df[df.stream == True].α,df[df.stream == True].δ, bins=[bins_α,bins_δ], 
+                 cmap=cmap)
         ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
         ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
         ax.set_title("Stream Only", fontsize=16);
@@ -161,14 +167,16 @@ def visualize_stream(df, save_folder=None):
          fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
     
     if "stream" in df.keys(): ax = axs[0]
-    ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins])
+    ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins], 
+             cmap=cmap)
     ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
     ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
     ax.set_title("Full Dataset", fontsize=16)
     
     if "stream" in df.keys():
         ax = axs[1]
-        ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ),df[df.stream == True].μ_δ, bins=[bins,bins])
+        ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ),df[df.stream == True].μ_δ, bins=[bins,bins], 
+                 cmap=cmap)
         ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
         ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
         ax.set_title("Stream Only", fontsize=16);

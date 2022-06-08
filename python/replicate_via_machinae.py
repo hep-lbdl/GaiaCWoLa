@@ -65,6 +65,7 @@ if __name__ == "__main__":
 
     ### Load file & preprocess
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
+#     df_all = df_all.drop_duplicates(subset=['δ']) ### DROP DUPLICATES
     visualize_stream(df_all, save_folder=save_folder)
 
     ## Scan over patches
