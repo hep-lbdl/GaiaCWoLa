@@ -77,12 +77,13 @@ if __name__ == "__main__":
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
 
     def train_on_patch(patch_id):
-        α_min = limits.iloc[patch_id]["α_center"]-10
-        α_max = limits.iloc[patch_id]["α_center"]+10
-        δ_min = limits.iloc[patch_id]["δ_center"]-10
-        δ_max = limits.iloc[patch_id]["δ_center"]+10
-        df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
-                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])
+#         α_min = limits.iloc[patch_id]["α_center"]-10
+#         α_max = limits.iloc[patch_id]["α_center"]+10
+#         δ_min = limits.iloc[patch_id]["δ_center"]-10
+#         δ_max = limits.iloc[patch_id]["δ_center"]+10
+#         df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
+#                      (δ_min < df_all.δ) & (df_all.δ < δ_max)])
+        df = df_all[df_all.patch_id == patch_id]
         if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
             visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
             df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
@@ -110,7 +111,7 @@ if __name__ == "__main__":
         return test
 
     pool = Pool(processes=8) # max = cpu_count()
-    results = pool.map(train_on_patch, limits.patch_id.unique())
+    results = pool.map(train_on_patch, df_all.patch_id.unique()) # use limits.patch_id.unique() for rectangular scan
     pool.close()
     pool.join()    
     
