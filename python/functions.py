@@ -348,7 +348,7 @@ def plot_results(test, save_folder=None, verbose=True):
 
         ### Choose a cut to optimize purity
         if not np.isnan(purities).all():
-            if verbose: print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
+#             if verbose: print("Maximum purity of {:.1f}% at {:.2f}%".format(np.nanmax(purities),cuts[np.nanargmax(purities)]))
             cut = cuts[np.nanargmax(purities)]
             plt.figure(dpi=150)
             plt.plot(cuts, purities, label="Signal Purity")
@@ -358,7 +358,8 @@ def plot_results(test, save_folder=None, verbose=True):
                 plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
-    for x in [10, 20, 50, 100]: # top N stars
+#     for x in [10, 20, 50, 100]: # top N stars
+    for x in [50]:
         top_stars = test.sort_values('nn_score',ascending=False)[:x]
         if "stream" in test.keys():
             stream_stars_in_test_set = test[test.stream == True]
