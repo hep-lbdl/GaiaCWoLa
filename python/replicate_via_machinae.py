@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--layer_size", default=256, type=int, help="Number of nodes per layer.")
     parser.add_argument("--patience", default=30, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
     parser.add_argument("--epochs", default=2000, type=int, help="Number of training epochs.")
-    parser.add_argument("--batch_size", default=15000, type=int, help="Batch size during training.")
+    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0.2, type=float, help="Dropout probability.")
     parser.add_argument("--l2_reg", default=0, type=float, help="L2 regularization.")
     parser.add_argument("--n_folds", default=10, type=int, help="Number of k-folds.")
@@ -65,7 +65,8 @@ if __name__ == "__main__":
 
     ### Load file & preprocess
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
-#     df_all = df_all.drop_duplicates(subset=['δ']) ### DROP DUPLICATES
+    weight=1 
+    df_all["weight"] = np.where(df_all['stream']==True, weight, 1)
     visualize_stream(df_all, save_folder=save_folder)
 
     ## Scan over patches
@@ -84,6 +85,7 @@ if __name__ == "__main__":
 #         df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
 #                      (δ_min < df_all.δ) & (df_all.δ < δ_max)])
         df = df_all[df_all.patch_id == patch_id]
+        df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag'])
         if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
             visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
             df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
