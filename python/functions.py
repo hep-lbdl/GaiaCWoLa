@@ -31,6 +31,14 @@ plt.rcParams.update({
     "figure.max_open_warning": False,
 })
 
+def fiducial_cuts(df):
+    δ_mid = 0.5*(df.δ.max() + df.δ.min())
+    α_mid = 0.5*(df.α.max() + df.α.min())
+    df = df[((df.δ-δ_mid)**2 + (df.α-α_mid)**2) < 10**2] # central 10 degree circle, to avoid edge effects
+    df = df[df.mag < 20.2]
+    df = df[(0.5 < df.color) & (df.color < 1)]
+    return(df)
+
 #function from David's file via_machinae.py
 def angular_distance(angle1,angle2):
     # inputs are np arrays of [ra,dec]
@@ -128,74 +136,74 @@ def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
     df.reset_index(inplace=True)
     return df, file
 
-def visualize_stream(df, save_folder=None):
-    # bins = np.linspace(-15,15,50)
-    bins_α=np.linspace(df.α.min(),df.α.max(),50)
-    bins_δ=np.linspace(df.δ.min(),df.δ.max(),50)
+def plot_coords(df, save_folder=None):
+    fig, axs = plt.subplots(nrows=2, ncols=3, dpi=200, figsize=(10,7), tight_layout=True)
     
-    cmap = "binary"
+    bins_α=np.linspace(df.α.min(),df.α.max(),100)
+    bins_δ=np.linspace(df.δ.min(),df.δ.max(),100)
     
-    if "stream" in df.keys():
-         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=200, figsize=(5.5,3), tight_layout=True)
-    else:
-         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
+    cmap="binary"
+    labelsize=14
     
-    if "stream" in df.keys(): ax = axs[0]
-    ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ], 
-             cmap=cmap)
-    ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
-    ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
+    ax = axs[0,0]
+    ax.hist2d(df.α,df.δ, bins=[bins_α,bins_δ], cmap=cmap)
+    ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=labelsize)
+    ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=labelsize);
     ax.set_title("Full Dataset", fontsize=16)
     
-    if "stream" in df.keys():
-        ax = axs[1]
-        ax.hist2d(df[df.stream == True].α,df[df.stream == True].δ, bins=[bins_α,bins_δ], 
-                 cmap=cmap)
-        ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=11)
-        ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=11);
-        ax.set_title("Stream Only", fontsize=16);
-        
-    if save_folder is not None:
-        os.makedirs(save_folder, exist_ok=True)
-        plt.savefig(os.path.join(save_folder,"stream_position.png"))
-        plt.savefig(os.path.join(save_folder,"stream_position.pdf"))
+    ax = axs[1,0]
+    ax.hist2d(df[df.stream == True].α,df[df.stream == True].δ, bins=[bins_α,bins_δ], cmap=cmap)
+    ax.set_xlabel(r"$\alpha$ [\textdegree]", fontsize=labelsize)
+    ax.set_ylabel(r"$\delta$ [\textdegree]", fontsize=labelsize);
+    ax.set_title("Stream Only", fontsize=16);
     
     bins = np.linspace(-25,10,100)
-    if "stream" in df.keys():
-         fig, axs = plt.subplots(nrows=1, ncols=2, dpi=200, figsize=(6,3), tight_layout=True)
-    else:
-         fig, ax = plt.subplots(nrows=1, ncols=1, dpi=200, figsize=(3,3), tight_layout=True)
-    
-    if "stream" in df.keys(): ax = axs[0]
-    ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins], 
-             cmap=cmap)
-    ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
-    ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
+    ax = axs[0,1]
+    ax.hist2d(df.μ_α*np.cos(df.δ),df.μ_δ, bins=[bins,bins], cmap=cmap)
+    ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [mas/year]", fontsize=labelsize)
+    ax.set_ylabel(r"$\mu_\delta$ [mas/year]", fontsize=labelsize);
     ax.set_title("Full Dataset", fontsize=16)
     
-    if "stream" in df.keys():
-        ax = axs[1]
-        ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ),df[df.stream == True].μ_δ, bins=[bins,bins], 
-                 cmap=cmap)
-        ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [$\mu$as/year]", fontsize=11)
-        ax.set_ylabel(r"$\mu_\delta$ [$\mu$as/year]", fontsize=11);
-        ax.set_title("Stream Only", fontsize=16);
-        
+    ax = axs[1,1]
+    ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ), df[df.stream == True].μ_δ, bins=[bins,bins], cmap=cmap)
+    ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [mas/year]", fontsize=labelsize)
+    ax.set_ylabel(r"$\mu_\delta$ [mas/year]", fontsize=labelsize);
+    ax.set_title("Stream Only", fontsize=16);
+    
+    bins_color=np.linspace(df.color.min(),df.color.max(),100)
+    bins_mag=np.linspace(df.mag.min(),df.mag.max(),100)
+    
+    ax = axs[0,2]
+    ax.hist2d(df.color,df.mag, bins=[bins_color,bins_mag], cmap=cmap)
+    ax.set_ylim(ax.get_ylim()[::-1]) # reverse y axis to match Via Machinae plot
+    ax.set_xlabel(r"$b-r$", fontsize=labelsize)
+    ax.set_ylabel(r"$g$", fontsize=labelsize);
+    ax.set_title("Full Dataset", fontsize=16)
+    
+    ax = axs[1,2]
+    ax.hist2d(df[df.stream == True].color,df[df.stream == True].mag, bins=[bins_color,bins_mag], cmap=cmap)
+    ax.set_ylim(ax.get_ylim()[::-1]) # reverse y axis to match Via Machinae plot
+    ax.set_xlabel(r"$b-r$", fontsize=labelsize)
+    ax.set_ylabel(r"$g$", fontsize=labelsize);
+    ax.set_title("Stream Only", fontsize=16);
+    
     if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"stream_velocities.png"))
-        plt.savefig(os.path.join(save_folder,"stream_velocities.pdf"))
-        
-    if "stream" in df.keys():
-        plt.figure(dpi=150) 
-        bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,40) 
-        plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, 
-                 bins=bins, label="Background");
-        plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, 
-                 bins=bins, label="GD1")
-        plt.title('GD1 Tail')
-        plt.xlabel(r'$\mu_\delta$')
-        plt.ylabel('Counts (Normalized)')
-        plt.legend();
+        plt.savefig(os.path.join(save_folder,"input_variables.png"))
+        plt.savefig(os.path.join(save_folder,"input_variables.pdf"))
+    
+def visualize_stream(df, save_folder=None):
+    if save_folder is not None:
+        os.makedirs(save_folder, exist_ok=True)
+    plot_coords(df, save_folder)
+
+    plt.figure(dpi=150) 
+    bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,40) 
+    plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, bins=bins, label="Background");
+    plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, bins=bins, label="GD-1")
+    plt.title('GD-1 Proper Velocity')
+    plt.xlabel(r'$\mu_\delta$')
+    plt.ylabel('Counts (Normalized)')
+    plt.legend();
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_delta_zoomed_in.png"))
         
@@ -303,14 +311,14 @@ def plot_results(test, save_folder=None, verbose=True):
     if save_folder is not None: 
         os.makedirs(save_folder, exist_ok=True)
     fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(8,3), constrained_layout=True)
-    bins=np.linspace(0,1,10)
+    bins=np.linspace(0,1,50)
     ax = axs[0]
     ax.tick_params(labelsize=12)
     ax.hist(test[test.label == 1].nn_score, bins=bins, histtype='step', linewidth=2, color="dodgerblue", label="Signal Region")
     ax.hist(test[test.label == 0].nn_score, bins=bins, histtype='step', linewidth=2, color="orange", label="Sideband Region")
     ax.legend(fontsize=12)
     ax.set_xlim(0, 1)
-    ax.set_title("Test Set (15\% of full dataset)")
+    ax.set_title("Test Set")
     ax.set_xlabel("NN Score", size=12)
     ax.set_ylabel("Events", size=12)
 
@@ -323,7 +331,7 @@ def plot_results(test, save_folder=None, verbose=True):
         ax.legend(fontsize=12)
         ax.set_yscale("log")
         ax.set_xlim(0, 1)
-        ax.set_title("Test Set (15\% of full dataset)")
+        ax.set_title("Test Set")
         ax.set_xlabel("NN Score", size=12)
         ax.set_ylabel("Events", size=12);
     if save_folder is not None: 
@@ -358,8 +366,8 @@ def plot_results(test, save_folder=None, verbose=True):
                 plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
-#     for x in [10, 20, 50, 100]: # top N stars
-    for x in [50]:
+    for x in [10, 20, 25, 50, 100]: # top N stars
+#     for x in [25]:
         top_stars = test.sort_values('nn_score',ascending=False)[:x]
         if "stream" in test.keys():
             stream_stars_in_test_set = test[test.stream == True]
