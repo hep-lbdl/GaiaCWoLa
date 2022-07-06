@@ -197,12 +197,13 @@ def visualize_stream(df, save_folder=None):
     plot_coords(df, save_folder)
 
     plt.figure(dpi=150) 
-    bins = np.linspace(df[df.stream].μ_δ.min()-5,df[df.stream].μ_δ.max()+5,40) 
-    plt.hist(df[df.stream == False].μ_δ, density=True, color="gray", histtype="step", linewidth=2, bins=bins, label="Background");
-    plt.hist(df[df.stream].μ_δ, density=True, color="deeppink", histtype="step", linewidth=2, bins=bins, label="GD-1")
+    bins = np.linspace(df.μ_δ.min(),df.μ_δ.max(),100) 
+    plt.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
+    plt.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
     plt.title('GD-1 Proper Velocity')
     plt.xlabel(r'$\mu_\delta$')
-    plt.ylabel('Counts (Normalized)')
+    plt.ylabel('Counts')
+    plt.yscale('log')
     plt.legend();
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_delta_zoomed_in.png"))
@@ -214,12 +215,12 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         sr_min = sr_min
         sr_max = sr_max
         
-    elif stream == "gd1_tail":
+    # elif stream == "gd1_tail":
         ### Optimized GD1 tail w/ overlapping patches 
-        sb_min = -7
-        sr_min = -6
-        sr_max = -3.1
-        sb_max = -3
+        # sb_min = -7
+        # sr_min = -6
+        # sr_max = -3.1
+        # sb_max = -3
         
     elif stream == "mock":
         sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
@@ -240,22 +241,22 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         sr_max = df.μ_δ.mean()+df.μ_δ.std()/4        
         
     else: 
-        sb_min = df.μ_δ.min()
-        sb_max = df.μ_δ.max()
+        sb_min = df[df.stream].μ_δ.min()
+        sb_max = df[df.stream].μ_δ.max()
         sr_min = sb_min+1
         sr_max = sb_max-1
         
-    plt.figure(dpi=150)
-    bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
-    plt.hist(df.μ_δ, bins=bins, color="lightgray", label="Background");
-    if "stream" in df.keys(): plt.hist(df[df.stream == True].μ_δ, bins=bins, color="deeppink", label="Stream");
-    plt.yscale('log')
-    plt.legend(frameon=False)
-    plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-    plt.ylabel("Counts")
-    if save_folder is not None:
-        os.makedirs(save_folder, exist_ok=True)
-        plt.savefig(os.path.join(save_folder,"mu_delta.png"))
+    # plt.figure(dpi=150)
+    # bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
+    # plt.hist(df.μ_δ, bins=bins, color="lightgray", label="Background");
+    # if "stream" in df.keys(): plt.hist(df[df.stream == True].μ_δ, bins=bins, color="crimson", label="Stream");
+    # plt.yscale('log')
+    # plt.legend(frameon=False)
+    # plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
+    # plt.ylabel("Counts")
+    # if save_folder is not None:
+    #     os.makedirs(save_folder, exist_ok=True)
+    #     plt.savefig(os.path.join(save_folder,"mu_delta.png"))
     
     if verbose:
         print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
@@ -280,8 +281,8 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         
     if "stream" in df.keys():
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
-        bins = np.linspace(sb_min,sb_max,50)
-        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["deeppink","lightgray"], label=["Stream", "Background"])
+        bins = np.linspace(sb_min,sb_max,30)
+        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["crimson","lightgray"], label=["Stream", "Background"])
         ax.set_yscale('log')
         ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
         ax.set_ylabel("Counts")
@@ -307,7 +308,7 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
             print("f_sig = {:.1f}X f_sideband.".format(n_sig_stream_stars/n_sig_bkg_stars/(n_sideband_stream_stars/n_sideband_bkg_stars)))
     return df_slice
 
-def plot_results(test, save_folder=None, verbose=True):
+def plot_results(test, top_n = [50], save_folder=None, verbose=True):
     if save_folder is not None: 
         os.makedirs(save_folder, exist_ok=True)
     fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(8,3), constrained_layout=True)
@@ -366,8 +367,7 @@ def plot_results(test, save_folder=None, verbose=True):
                 plt.savefig(os.path.join(save_folder,"purities.png"))
 
     ### Plot highest-ranked stars
-    for x in [10, 20, 25, 50, 100]: # top N stars
-#     for x in [25]:
+    for x in top_n: # top N stars
         top_stars = test.sort_values('nn_score',ascending=False)[:x]
         if "stream" in test.keys():
             stream_stars_in_test_set = test[test.stream == True]
