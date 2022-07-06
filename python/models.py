@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from scipy import stats
@@ -27,30 +28,55 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
         training_vars = ['μ_α','δ','α','color','mag']
     elif 'b-r' in df.keys():
         training_vars = ['μ_α','δ','α','g','b-r']
+   
+    ### Explicitly get indices of stars for each k-fold
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=15)
+    fold_stars = []
+    for fold, (train_index, test_index) in enumerate(skf.split(
+        df[training_vars], df.label)):
+        fold_stars.append(test_index)
+    
+    ### Loop through the k-folds
+    fold_labels = np.arange(len(fold_stars))
+    test_dataframes = []
+    for fold in tqdm(fold_labels, desc="Folds"):
+        save_folder_fold = os.path.join(save_folder,"kfold_{}".format(fold))
         
-    loop_purities = []
-    for loop in tqdm(np.arange(best_of_n_loops), desc="Loop"):
+        ### Define test set
+        test_stars = fold_stars[fold]
         
-        ### Standardize the inputs (x) and create the array of labels (y)
-        from sklearn.preprocessing import StandardScaler
-        sc = StandardScaler()
-        inputs = sc.fit_transform(df[training_vars])
-        labels = df.label.to_numpy()
+        ### Loop through all remaining val sets
+        val_losses = []
+        test_scores = []
+        for val_set in tqdm(np.delete(fold_labels, fold), desc="Validation sets"):
+            ### Make save folder
+            save_folder_val = os.path.join(save_folder,"kfold_{}".format(fold),"val_set_{}".format(val_set))
+            os.makedirs(save_folder_val, exist_ok=True)
         
-        ### Temporary -- apply an extra weight to the signal region
-        sample_weight = df.weight.to_numpy()
-        
-        ### Stratified K-Folding will create folds with equal ratios of signal vs. sideband stars
-        skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
-        fold_purities = []
-        for fold, (train_index, test_index) in enumerate(skf.split(inputs, labels)):
-            save_folder_fold = os.path.join(save_folder,"kfold_{}".format(fold))
-            os.makedirs(save_folder_fold, exist_ok=True)
-            print("Training k-fold {}...".format(fold))
-            x_train, x_test = inputs[train_index], inputs[test_index]
-            y_train, y_test = labels[train_index], labels[test_index]
-            test = df.iloc[test_index] # hang onto the dataframe for plotting etc. 
+            ### Define val set
+            val_stars = fold_stars[val_set]
+            train_stars = np.concatenate([fold_stars[i] for i in np.delete(fold_labels, [fold, val_set])])
             
+            ### Define datasets
+            train = df.iloc[train_stars]
+            val = df.iloc[val_stars]
+            test = df.iloc[test_stars]
+        
+            ### Standardize the inputs (x) and create the array of labels (y)
+            from sklearn.preprocessing import StandardScaler
+            sc = StandardScaler()
+            train_x = sc.fit_transform(train[training_vars])
+            train_y = train.label.to_numpy()
+
+            val_x = sc.transform(val[training_vars])
+            val_y = val.label.to_numpy()
+
+            test_x = sc.transform(test[training_vars])
+            test_y = test.label.to_numpy()
+
+            ### Temporary -- apply an extra weight to the signal region
+            sample_weight = train.weight.to_numpy()
+
             ### Define model architecture 
             model = Sequential()
             model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu')) 
@@ -68,7 +94,7 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
                                                      verbose=0) 
 
             ### Save the best weights
-            weights_path = os.path.join(save_folder_fold,"weights.h5")
+            weights_path = os.path.join(save_folder_val,"weights.h5")
             checkpoint = callbacks.ModelCheckpoint(weights_path, 
                                                    monitor='loss', 
                                                    mode='auto', 
@@ -82,11 +108,11 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
                 callbacks_list = callbacks_list + [other_callbacks]
 
             ### Train!
-            history = model.fit(x_train, y_train, 
+            history = model.fit(train_x, train_y, 
                         epochs=epochs, 
-                        sample_weight=sample_weight[train_index],
+                        sample_weight=sample_weight,
                         batch_size=batch_size,
-#                         validation_data=(x_val,y_val),
+                        validation_data=(val_x, val_y),
                         callbacks = callbacks_list,
                         verbose = int(verbose),
                        )
@@ -95,62 +121,41 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
             fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
             ax = axs[0]
             ax.plot(history.history["accuracy"], label="Training Accuracy")
-#             ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
+            ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
             ax.set_title("Accuracy")
             ax.set_xlabel("Epochs")
             ax.legend()
 
             ax = axs[1]
             ax.plot(history.history["loss"], label="Training Loss")
-#             ax.plot(history.history["val_loss"], label="Validation Loss")
+            ax.plot(history.history["val_loss"], label="Validation Loss")
             ax.set_title("Loss")
             ax.set_xlabel("Epochs")
             ax.legend()
-            plt.savefig(os.path.join(save_folder_fold,"loss_curve.png"))
+            plt.savefig(os.path.join(save_folder_val,"loss_curve.png"))
+            
+            val_losses.append(np.min(history.history["val_loss"]))
 
             ### Add the NN prediction score to the test set: 
-            test["nn_score"] = model.predict(x_test)
-            test.to_hdf(os.path.join(save_folder_fold,"df_test.h5"), "df")
-
-            if "stream" in test.keys():
-                # Scan for optimal percentage
-                top_stars = test.sort_values('nn_score',ascending=False)[:50] # top 50 stars
-                stream_stars_in_test_set = test[test.stream == True]
-                if True in top_stars.stream.unique(): 
-                    n_perfect_matches = top_stars.stream.value_counts()[True] 
-                    stream_stars_in_test_set = test[test.stream == True]
-                    efficiency = 100*n_perfect_matches/len(stream_stars_in_test_set)
-                    purity = n_perfect_matches/len(top_stars)*100
-                else: 
-                    n_perfect_matches = 0 
-                    efficiency = 0
-                    purity = 0
-
-            fold_purities.append(np.round(purity, decimals=2))
-
-#         max_loop_purities = [np.nanmax(loop_purity) for loop_purity in loop_purities]
-#         print("Max loop purities:", max_loop_purities)
+            test["nn_score"] = model.predict(test_x)
+            test_scores.append(np.array(test.nn_score))
 
             ### Plot scores:
-            plot_results(test, save_folder=save_folder_fold, verbose=verbose)
+            plot_results(test, save_folder=save_folder_val, verbose=verbose)
 
-        ### Load the weights from the best k-fold (measured by purity) 
-        print("Fold purities:", fold_purities)
-        print("Average purity = {}".format(np.mean(fold_purities)))
-        print("Best k-fold = {}, with a purity of {:.2f}%.".format(np.argmax(fold_purities), np.nanmax(fold_purities)))
-        print("Loading weights from k-fold {}...".format(np.argmax(fold_purities)))
-        best_fold_folder = os.path.join(save_folder,"kfold_{}".format(np.argmax(fold_purities)))
-        model.load_weights(os.path.join(best_fold_folder,"weights.h5"))      
-        test = pd.read_hdf(os.path.join(best_fold_folder,"df_test.h5"))
+        ### For each of the best models per validation set (measured by lowest val_loss), evaluate on the test set and take the average score for each star
+        test["nn_score"] = np.mean(test_scores, axis=0) ### use AVERAGE score from all val sets
+        test.to_hdf(os.path.join(save_folder_fold,"df_test.h5"), "df")
+        test_dataframes.append(test)
         
-        ### Save best model & final performance plots
-        os.makedirs(os.path.join(save_folder, "before_fiducial_cuts"), exist_ok=True)
-        os.makedirs(os.path.join(save_folder, "after_fiducial_cuts"), exist_ok=True)
-        test.to_hdf(os.path.join(save_folder, "before_fiducial_cuts", "df_test.h5"), "df")
-        model.save_weights(os.path.join(save_folder, "before_fiducial_cuts", "weights.h5"))
-        plot_results(test, save_folder=os.path.join(save_folder, "before_fiducial_cuts"))
-        plot_results(fiducial_cuts(test), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
-    return(test)
+        plot_results(test, save_folder=os.path.join(save_folder_fold, "before_fiducial_cuts"))
+        plot_results(fiducial_cuts(test), save_folder=os.path.join(save_folder_fold, "after_fiducial_cuts"))
+
+    ### Stitch all the test sets into a mega-Frankenstein-test set of the entire dataset
+    test_full = pd.concat([df for df in test_dataframes])
+    plot_results(test_full, save_folder=os.path.join(save_folder, "before_fiducial_cuts"))
+    plot_results(fiducial_cuts(test_full), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
+    return(test_full)
 
     
 
