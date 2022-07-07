@@ -46,7 +46,6 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
         test_stars = fold_stars[fold]
         
         ### Loop through all remaining val sets
-        val_losses = []
         test_scores = []
         for val_set in tqdm(np.delete(fold_labels, fold), desc="Validation sets"):
             ### Make save folder
@@ -75,67 +74,78 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
             test_y = test.label.to_numpy()
 
             ### Temporary -- apply an extra weight to the signal region
-            sample_weight = train.weight.to_numpy()
-
-            ### Define model architecture 
-            model = Sequential()
-            model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu')) 
-            if dropout != 0: model.add(Dropout(dropout))
-            model.add(Dense(layer_size, activation='relu'))
-            if dropout != 0: model.add(Dropout(dropout))
-            model.add(Dense(layer_size, activation='relu'))
-            if dropout != 0: model.add(Dropout(dropout))
-            model.add(Dense(1, activation='sigmoid'))
-            model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
-            ### Early stopping (stops training if loss doesn't improve for [patience] straight epochs)
-            early_stopping = callbacks.EarlyStopping(monitor='loss', 
-                                                     patience=patience, 
-                                                     verbose=0) 
-
-            ### Save the best weights
-            weights_path = os.path.join(save_folder_val,"weights.h5")
-            checkpoint = callbacks.ModelCheckpoint(weights_path, 
-                                                   monitor='loss', 
-                                                   mode='auto', 
-                                                   verbose=0, 
-                                                   save_best_only=True, 
-                                                   save_weights_only=True)
-
-            ### Add any additional callbacks for training
-            callbacks_list = [checkpoint,early_stopping]
-            if other_callbacks is not None:
-                callbacks_list = callbacks_list + [other_callbacks]
-
-            ### Train!
-            history = model.fit(train_x, train_y, 
-                        epochs=epochs, 
-                        sample_weight=sample_weight,
-                        batch_size=batch_size,
-                        validation_data=(val_x, val_y),
-                        callbacks = callbacks_list,
-                        verbose = int(verbose),
-                       )
-
-            ### Save training losses & accuracies
-            fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
-            ax = axs[0]
-            ax.plot(history.history["accuracy"], label="Training Accuracy")
-            ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
-            ax.set_title("Accuracy")
-            ax.set_xlabel("Epochs")
-            ax.legend()
-
-            ax = axs[1]
-            ax.plot(history.history["loss"], label="Training Loss")
-            ax.plot(history.history["val_loss"], label="Validation Loss")
-            ax.set_title("Loss")
-            ax.set_xlabel("Epochs")
-            ax.legend()
-            plt.savefig(os.path.join(save_folder_val,"loss_curve.png"))
+            if train.weight.unique() == 1: 
+                sample_weight = None
+            else:
+                sample_weight = train.weight.to_numpy()
             
-            val_losses.append(np.min(history.history["val_loss"]))
+            ### Repeat this training multiple times to find the one with the lowest loss 
+            val_losses = []
+            for n in tqdm(range(best_of_n_loops), desc="Loops"): 
+                os.makedirs(os.path.join(save_folder_val, "loop_{}".format(n)), exist_ok=True)
+                
+                ### Define model architecture 
+                model = Sequential()
+                model.add(Dense(layer_size, input_dim=len(training_vars), activation='relu')) 
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(layer_size, activation='relu'))
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(layer_size, activation='relu'))
+                if dropout != 0: model.add(Dropout(dropout))
+                model.add(Dense(1, activation='sigmoid'))
+                model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
+                ### Early stopping (stops training if loss doesn't improve for [patience] straight epochs)
+                early_stopping = callbacks.EarlyStopping(monitor='loss', 
+                                                         patience=patience, 
+                                                         verbose=0) 
+
+                ### Save the best weights
+                weights_path = os.path.join(save_folder_val,"loop_{}".format(n),"weights.h5")
+                checkpoint = callbacks.ModelCheckpoint(weights_path, 
+                                                       monitor='loss', 
+                                                       mode='auto', 
+                                                       verbose=0, 
+                                                       save_best_only=True, 
+                                                       save_weights_only=True)
+
+                ### Add any additional callbacks for training
+                callbacks_list = [checkpoint,early_stopping]
+                if other_callbacks is not None:
+                    callbacks_list = callbacks_list + [other_callbacks]
+
+                ### Train!
+                history = model.fit(train_x, train_y, 
+                            epochs=epochs, 
+                            sample_weight=sample_weight,
+                            batch_size=batch_size,
+                            validation_data=(val_x, val_y),
+                            callbacks = callbacks_list,
+                            verbose = int(verbose),
+                           )
+
+                ### Save training losses & accuracies
+                fig, axs = plt.subplots(nrows=1, ncols=2, figsize = (12,6))
+                ax = axs[0]
+                ax.plot(history.history["accuracy"], label="Training Accuracy")
+                ax.plot(history.history["val_accuracy"], label="Validation Accuracy")
+                ax.set_title("Accuracy")
+                ax.set_xlabel("Epochs")
+                ax.legend()
+
+                ax = axs[1]
+                ax.plot(history.history["loss"], label="Training Loss")
+                ax.plot(history.history["val_loss"], label="Validation Loss")
+                ax.set_title("Loss")
+                ax.set_xlabel("Epochs")
+                ax.legend()
+                plt.savefig(os.path.join(save_folder_val, "loop_{}".format(n), "loss_curve.png"))
+
+                val_losses.append(np.min(history.history["val_loss"]))
+
+            ### Choose the loop with the lowest val_loss 
+            model.load_weights(os.path.join(save_folder_val,"loop_{}".format(np.argmin(val_losses)),"weights.h5"))
+            
             ### Add the NN prediction score to the test set: 
             test["nn_score"] = model.predict(test_x)
             test_scores.append(np.array(test.nn_score))
