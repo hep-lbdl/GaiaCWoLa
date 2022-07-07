@@ -74,7 +74,7 @@ def train(df, layer_size, batch_size, dropout, l2_reg, epochs, patience, n_folds
             test_y = test.label.to_numpy()
 
             ### Temporary -- apply an extra weight to the signal region
-            if train.weight.unique() == 1: 
+            if len(train.weight.unique()) == 1: 
                 sample_weight = None
             else:
                 sample_weight = train.weight.to_numpy()
