@@ -16,7 +16,6 @@ from keras import callbacks, regularizers
 from sklearn.metrics import roc_curve, auc,roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
-from livelossplot.keras import PlotLossesCallback
 
 ### Plot setup
 plt.rcParams.update({
@@ -115,6 +114,14 @@ def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
     else:
         print("Stream not recognized.")
         
+        
+    ### Drop duplicate stars 
+    if 'color' in df.keys(): 
+        variables = ['μ_α','μ_δ','δ','α','color','mag']
+    elif 'b-r' in df.keys():
+        variables = ['μ_α','μ_δ','δ','α','g','b-r']
+    df = df.drop_duplicates(subset=variables)
+    
     ### Drop any rows containing a NaN value
     df.dropna(inplace = True)
 
@@ -308,7 +315,7 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
             print("f_sig = {:.1f}X f_sideband.".format(n_sig_stream_stars/n_sig_bkg_stars/(n_sideband_stream_stars/n_sideband_bkg_stars)))
     return df_slice
 
-def plot_results(test, top_n = [50], save_folder=None, verbose=True):
+def plot_results(test, top_n = [50], save_folder=None, verbose=True, show=True):
     if save_folder is not None: 
         os.makedirs(save_folder, exist_ok=True)
     fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, figsize=(8,3), constrained_layout=True)
@@ -337,6 +344,8 @@ def plot_results(test, top_n = [50], save_folder=None, verbose=True):
         ax.set_ylabel("Events", size=12);
     if save_folder is not None: 
         plt.savefig(os.path.join(save_folder,"nn_scores.png"))
+    if show: plt.show()
+    plt.close()
     
     ### Plot purities
     if "stream" in test.keys():
@@ -365,6 +374,8 @@ def plot_results(test, top_n = [50], save_folder=None, verbose=True):
             plt.legend()    
             if save_folder is not None: 
                 plt.savefig(os.path.join(save_folder,"purities.png"))
+            if show: plt.show()
+            plt.close()
 
     ### Plot highest-ranked stars
     for x in top_n: # top N stars
@@ -376,7 +387,7 @@ def plot_results(test, top_n = [50], save_folder=None, verbose=True):
             else: 
                 n_perfect_matches = 0 
         
-            if verbose: print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
+            if verbose and show: print("Top {} stars: Purity = {:.1f}% ".format(x,n_perfect_matches/len(top_stars)*100))
 
         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
         plt.title('Top {} Stars'.format(x))
@@ -403,6 +414,8 @@ def plot_results(test, top_n = [50], save_folder=None, verbose=True):
         if save_folder is not None: 
             plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
             plt.savefig(os.path.join(save_folder,"top_{}_stars.pdf".format(x)))
+        if show: plt.show()
+        plt.close()
             
 #         plt.figure(figsize=(5,3), dpi=150, tight_layout=True) 
 #         plt.title('Top {} Stars'.format(x))
