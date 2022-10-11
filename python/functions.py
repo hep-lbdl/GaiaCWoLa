@@ -33,7 +33,8 @@ plt.rcParams.update({
 def fiducial_cuts(df):
     δ_mid = 0.5*(df.δ.max() + df.δ.min())
     α_mid = 0.5*(df.α.max() + df.α.min())
-    df = df[((df.δ-δ_mid)**2 + (df.α-α_mid)**2) < 10**2] # central 10 degree circle, to avoid edge effects
+    # central 10 degree circle, to avoid edge effects
+    df = df[((df.δ-δ_mid)**2 + (df.α-α_mid)**2) < 10**2] 
     df = df[df.mag < 20.2]
     df = df[(0.5 < df.color) & (df.color < 1)]
     return(df)
@@ -67,11 +68,14 @@ def get_random_file(glob_path):
     file = random.choice(glob(glob_path))
     return(file)
 
-def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
+def load_file(file = None, stream = None, folder = "../gaia_data/", percent_bkg = 100):
     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
     if stream == "mock": 
-        file = "../gaia_data/mock_streams/gaiamock_ra156.2_dec57.5_stream_feh-1.6_v3_863.npy"
-#         file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
+        if file is not None:
+            file = file
+        else:
+            file = os.path.join(folder,"mock_streams/gaiamock_ra156.2_dec57.5_stream_feh-1.6_v3_863.npy")
+#             file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
         print(file)
         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
         df['stream'] = df['stream']/100
@@ -94,11 +98,17 @@ def load_file(stream = None, folder = "../gaia_data/", percent_bkg = 100):
                            'pmra': 'μ_α',
                            'pmdec': 'μ_δ',
                            'streammask': 'stream'}, inplace=True)
+        df["mag"] = df.g
+        df["color"] = df["b-r"]
+        df["weight"] = 1
 
     elif stream == "gd1_tail":
 #         file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
         file = os.path.join(folder,"gd1_tail/gd1_tail_optimized_patch.h5")
         df = pd.read_hdf(file)
+        df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag'])
+        weight=1 
+        df["weight"] = np.where(df['stream']==True, weight, 1)
 
     elif stream == "gaia3":
         ### Note that we don't have stream labels here
@@ -203,17 +213,30 @@ def visualize_stream(df, save_folder=None):
         os.makedirs(save_folder, exist_ok=True)
     plot_coords(df, save_folder)
 
-    plt.figure(dpi=150) 
-    bins = np.linspace(df.μ_δ.min(),df.μ_δ.max(),100) 
-    plt.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
-    plt.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
-    plt.title('GD-1 Proper Velocity')
-    plt.xlabel(r'$\mu_\delta$')
-    plt.ylabel('Counts')
-    plt.yscale('log')
-    plt.legend();
+    fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, tight_layout=True) 
+    ax = axs[0]
+    bins = np.linspace(df.μ_δ.min(),df.μ_δ.max(),40) 
+    ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
+    ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
+    ax.set_title('Full Patch')
+    ax.set_xlabel(r'$\mu_\delta$')
+    ax.set_ylabel('Counts')
+    ax.set_yscale('log')
+    ax.legend(loc="upper left");
+    
+    ax = axs[1]
+    sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
+    sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
+    bins = np.linspace(sb_min,sb_max,10) 
+    ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
+    ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
+    ax.set_title('Signal + Sideband')
+    ax.set_xlabel(r'$\mu_\delta$')
+    ax.set_ylabel('Counts')
+    ax.set_yscale('log')
+    ax.legend();
     if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"mu_delta_zoomed_in.png"))
+        plt.savefig(os.path.join(save_folder,"mu_delta_zoom.png"))
         
 def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True):
     if sb_min is not None:
@@ -222,36 +245,25 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         sr_min = sr_min
         sr_max = sr_max
         
-    # elif stream == "gd1_tail":
-        ### Optimized GD1 tail w/ overlapping patches 
-        # sb_min = -7
-        # sr_min = -6
-        # sr_max = -3.1
-        # sb_max = -3
-        
-    elif stream == "mock":
-        sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
-        sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
-        sr_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/4
-        sr_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/4
+    elif stream == "gd1_tail":
+        ## Optimized GD1 tail w/ overlapping patches 
+        sb_min = -7
+        sr_min = -6
+        sr_max = -3.1
+        sb_max = -3
 
     elif stream == "gd1": 
         sb_min = -18
         sr_min = -15
         sr_max = -11
-        sb_max = -9.5
-        
-    elif stream == "jhelum":
-        sb_min = df.μ_δ.mean()-df.μ_δ.std()/2
-        sb_max = df.μ_δ.mean()+df.μ_δ.std()/2
-        sr_min = df.μ_δ.mean()-df.μ_δ.std()/4
-        sr_max = df.μ_δ.mean()+df.μ_δ.std()/4        
+        sb_max = -9.5       
         
     else: 
-        sb_min = df[df.stream].μ_δ.min()
-        sb_max = df[df.stream].μ_δ.max()
-        sr_min = sb_min+1
-        sr_max = sb_max-1
+        ### std strategy
+        sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
+        sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
+        sr_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/4
+        sr_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/4
         
     # plt.figure(dpi=150)
     # bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
