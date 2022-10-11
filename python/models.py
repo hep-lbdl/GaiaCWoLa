@@ -38,7 +38,7 @@ def train(df, layer_size, batch_size, dropout, epochs, patience, n_folds, best_o
     ### Loop through the k-folds
     fold_labels = np.arange(len(fold_stars))
     test_dataframes = []
-    for fold in tqdm(fold_labels, desc="[Step 1] k-folds"):
+    for fold in tqdm(fold_labels, desc="[Step 1] k-fold"):
         save_folder_fold = os.path.join(save_folder,"kfold_{}".format(fold))
         
         ### Define test set
@@ -46,7 +46,7 @@ def train(df, layer_size, batch_size, dropout, epochs, patience, n_folds, best_o
         
         ### Loop through all remaining val sets
         test_scores = []
-        for val_set in tqdm(np.delete(fold_labels, fold), desc="[Step 2] Validation sets"):
+        for val_set in tqdm(np.delete(fold_labels, fold), desc="[Step 2] Validation set (x{})".format(best_of_n_loops)):
             ### Make save folder
             save_folder_val = os.path.join(save_folder,"kfold_{}".format(fold),"val_set_{}".format(val_set))
             os.makedirs(save_folder_val, exist_ok=True)
@@ -82,7 +82,7 @@ def train(df, layer_size, batch_size, dropout, epochs, patience, n_folds, best_o
             
             ### Repeat this training multiple times to find the one with the lowest loss 
             val_losses = []
-            for n in tqdm(range(best_of_n_loops), desc="[Step 2] Validation sets (loops)"): 
+            for n in range(best_of_n_loops): 
                 os.makedirs(os.path.join(save_folder_val, "loop_{}".format(n)), exist_ok=True)
                 
                 ### Define model architecture 
