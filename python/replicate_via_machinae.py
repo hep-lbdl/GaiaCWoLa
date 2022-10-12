@@ -29,14 +29,13 @@ def get_args():
     parser.add_argument("--save_label", default='test', type=str, help="Folder name for saving training outputs & plots.")
     parser.add_argument("--n_patches", default=21, type=int, help="Number of patches to train over.")
     parser.add_argument("--layer_size", default=256, type=int, help="Number of nodes per layer.")
-    parser.add_argument("--patience", default=30, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
-    parser.add_argument("--epochs", default=2000, type=int, help="Number of training epochs.")
+    parser.add_argument("--patience", default=20, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
+    parser.add_argument("--epochs", default=100, type=int, help="Number of training epochs.")
     parser.add_argument("--batch_size", default=1000, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0.2, type=float, help="Dropout probability.")
-    parser.add_argument("--l2_reg", default=0, type=float, help="L2 regularization.")
-    parser.add_argument("--n_folds", default=10, type=int, help="Number of k-folds.")
+    parser.add_argument("--n_folds", default=5, type=int, help="Number of k-folds.")
     parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
-    parser.add_argument("--best_of_n_loops", default=1, type=int, help="Repeats the training N times and picks the best weights.")
+    parser.add_argument("--best_of_n_loops", default=3, type=int, help="Repeats the training N times and picks the best weights.")
     parser.add_argument("--gpu_id", default=0, type=int, help="Choose a GPU to run over (or -1 if you want to use CPU only).")
 
     return parser.parse_args()
@@ -89,10 +88,10 @@ if __name__ == "__main__":
         if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
             visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
             df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
-                            sb_min = df[df.stream].μ_δ.min(),
-                            sr_min = df[df.stream].μ_δ.min()+1,
-                            sr_max = df[df.stream].μ_δ.max()-1,
-                            sb_max = df[df.stream].μ_δ.max(), 
+#                             sb_min = df[df.stream].μ_δ.min(),
+#                             sr_min = df[df.stream].μ_δ.min()+1,
+#                             sr_max = df[df.stream].μ_δ.max()-1,
+#                             sb_max = df[df.stream].μ_δ.max(), 
                             verbose=False,
                             )
             tf.keras.backend.clear_session()
@@ -102,7 +101,6 @@ if __name__ == "__main__":
               layer_size = args.layer_size, 
               batch_size = args.batch_size, 
               dropout = args.dropout, 
-              l2_reg = args.l2_reg,
               epochs = args.epochs, 
               patience = args.patience,
               save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
