@@ -247,10 +247,15 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         
     elif stream == "gd1_tail":
         ## Optimized GD1 tail w/ overlapping patches 
-        sb_min = -7
+#         sb_min = -7
+#         sr_min = -6
+#         sr_max = -3.1
+#         sb_max = -3
+        ### just playing
+        sb_min = -9
         sr_min = -6
-        sr_max = -3.1
-        sb_max = -3
+        sr_max = -0.5
+        sb_max = 0
 
     elif stream == "gd1": 
         sb_min = -18
@@ -260,10 +265,10 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         
     else: 
         ### std strategy
-        sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
-        sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
-        sr_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/4
-        sr_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/4
+        sb_min = df[df.stream].μ_δ.median()-df[df.stream].μ_δ.std()/2
+        sb_max = df[df.stream].μ_δ.median()+df[df.stream].μ_δ.std()/2
+        sr_min = df[df.stream].μ_δ.median()-df[df.stream].μ_δ.std()/4
+        sr_max = df[df.stream].μ_δ.median()+df[df.stream].μ_δ.std()/4
         
     # plt.figure(dpi=150)
     # bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
