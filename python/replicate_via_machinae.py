@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--layer_size", default=256, type=int, help="Number of nodes per layer.")
     parser.add_argument("--patience", default=20, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
     parser.add_argument("--epochs", default=100, type=int, help="Number of training epochs.")
-    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size during training.")
+    parser.add_argument("--batch_size", default=10000, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0.2, type=float, help="Dropout probability.")
     parser.add_argument("--n_folds", default=5, type=int, help="Number of k-folds.")
     parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
