@@ -107,7 +107,7 @@ def load_file(file = None, stream = None, folder = "../gaia_data/", percent_bkg 
         file = os.path.join(folder,"gd1_tail/gd1_tail_optimized_patch.h5")
         df = pd.read_hdf(file)
         df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag'])
-        weight=1 
+        weight = 1 
         df["weight"] = np.where(df['stream']==True, weight, 1)
 
     elif stream == "gaia3":
@@ -205,57 +205,19 @@ def plot_coords(df, save_folder=None):
     ax.set_title("Stream Only", fontsize=16);
     
     if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"input_variables.png"))
+#         plt.savefig(os.path.join(save_folder,"input_variables.png"))
         plt.savefig(os.path.join(save_folder,"input_variables.pdf"))
     
-def visualize_stream(df, save_folder=None):
-    if save_folder is not None:
-        os.makedirs(save_folder, exist_ok=True)
-    plot_coords(df, save_folder)
-
-    fig, axs = plt.subplots(nrows=1, ncols=2, dpi=150, tight_layout=True) 
-    ax = axs[0]
-    bins = np.linspace(df.μ_δ.min(),df.μ_δ.max(),40) 
-    ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
-    ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
-    ax.set_title('Full Patch')
-    ax.set_xlabel(r'$\mu_\delta$')
-    ax.set_ylabel('Counts')
-    ax.set_yscale('log')
-    ax.legend(loc="upper left");
+def signal_sideband(df, sr_factor = 2, sb_factor = 3, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True):
     
-    ax = axs[1]
-    sb_min = df[df.stream].μ_δ.mean()-df[df.stream].μ_δ.std()/2
-    sb_max = df[df.stream].μ_δ.mean()+df[df.stream].μ_δ.std()/2
-    bins = np.linspace(sb_min,sb_max,10) 
-    ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
-    ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="GD-1")
-    ax.set_title('Signal + Sideband')
-    ax.set_xlabel(r'$\mu_\delta$')
-    ax.set_ylabel('Counts')
-    ax.set_yscale('log')
-    ax.legend();
-    if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"mu_delta_zoom.png"))
-        
-def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True):
+    print("SR factor:", sr_factor)
+    print("SB factor:", sb_factor)
+    
     if sb_min is not None:
         sb_min = sb_min
         sb_max = sb_max
         sr_min = sr_min
         sr_max = sr_max
-        
-#     elif stream == "gd1_tail":
-#         ## Optimized GD1 tail w/ overlapping patches 
-# #         sb_min = -7
-# #         sr_min = -6
-# #         sr_max = -3.1
-# #         sb_max = -3
-#         ### just playing
-#         sb_min = -9
-#         sr_min = -6
-#         sr_max = -0.5
-#         sb_max = 0
 
     elif stream == "gd1": 
         sb_min = -18
@@ -264,63 +226,79 @@ def signal_sideband(df, stream=None, save_folder=None, sb_min=None, sb_max=None,
         sb_max = -9.5       
         
     else: 
-#         ### std strategy for mock streams
-#         sb_min = df[df.stream].μ_δ.median()-df[df.stream].μ_δ.std()/2
-#         sb_max = df[df.stream].μ_δ.median()+df[df.stream].μ_δ.std()/2
-#         sr_min = df[df.stream].μ_δ.median()-df[df.stream].μ_δ.std()/4
-#         sr_max = df[df.stream].μ_δ.median()+df[df.stream].μ_δ.std()/4
-
-        ### std strategy for GD-1
-        sb_min = df[df.stream].μ_δ.median()-3*df[df.stream].μ_δ.std()
-        sb_max = df[df.stream].μ_δ.median()+3*df[df.stream].μ_δ.std()
-        sr_min = df[df.stream].μ_δ.median()-2*df[df.stream].μ_δ.std()
-        sr_max = df[df.stream].μ_δ.median()+2*df[df.stream].μ_δ.std()
-        
-    # plt.figure(dpi=150)
-    # bins=np.linspace(df.μ_δ.min(),df.μ_δ.max(),50)
-    # plt.hist(df.μ_δ, bins=bins, color="lightgray", label="Background");
-    # if "stream" in df.keys(): plt.hist(df[df.stream == True].μ_δ, bins=bins, color="crimson", label="Stream");
-    # plt.yscale('log')
-    # plt.legend(frameon=False)
-    # plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-    # plt.ylabel("Counts")
-    # if save_folder is not None:
-    #     os.makedirs(save_folder, exist_ok=True)
-    #     plt.savefig(os.path.join(save_folder,"mu_delta.png"))
+        sb_min = df[df.stream].μ_δ.median()-sb_factor*df[df.stream].μ_δ.std()
+        sb_max = df[df.stream].μ_δ.median()+sb_factor*df[df.stream].μ_δ.std()
+        sr_min = df[df.stream].μ_δ.median()-sr_factor*df[df.stream].μ_δ.std()
+        sr_max = df[df.stream].μ_δ.median()+sr_factor*df[df.stream].μ_δ.std()
     
     if verbose:
-        print("Sideband region: [{:.1f},{:.1f}]".format(sb_min,sb_max))
+        print("Sideband region: [{:.1f},{:.1f}) & ({:.1f},{:.1f}]".format(sb_min, sr_min, sr_max, sb_max))
         print("Signal region: [{:.1f},{:.1f}]".format(sr_min,sr_max))
     
-    df_slice = df[(df.μ_δ > sb_min) & (df.μ_δ < sb_max)]
-    df_slice['label'] = np.where(((df_slice.μ_δ > sr_min) & (df_slice.μ_δ < sr_max)), 1, 0)
+    df_slice = df[(df.μ_δ >= sb_min) & (df.μ_δ <= sb_max)]
+    df_slice['label'] = np.where(((df_slice.μ_δ >= sr_min) & (df_slice.μ_δ <= sr_max)), 1, 0)
     
     sr = df_slice[df_slice.label == 1]
     sb = df_slice[df_slice.label == 0]
     if verbose: print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
     
-    plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
-    bins = np.linspace(sb_min,sb_max,50)
-    plt.hist(sr.μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
-    plt.hist(sb.μ_δ,bins=bins,color="orange",label="Sideband Region")
-    plt.legend(frameon=False)
-    plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-    plt.ylabel("Counts")
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,5), dpi=150, tight_layout=True) 
+    ax = axs[0]
+    bins = np.linspace(df.μ_δ.min(),df.μ_δ.max(),60) 
+    ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
+    ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="Stream")
+    ax.set_title('Full Patch')
+    ax.set_xlabel(r'$\mu_\delta$')
+    ax.set_ylabel('Counts')
+    ax.set_yscale('log')
+    ax.legend(loc="upper left");
+    
+    ax = axs[1]
+    bins = np.linspace(sb_min*1.5, sb_max*1.5, 40)
+    
+    outer_region = df[(df.μ_δ < sb_min) | (df.μ_δ > sb_max)]
+    sb = df[(df.μ_δ >= sb_min) & (df.μ_δ <= sb_max)]
+    sr = df[(df.μ_δ >= sr_min) & (df.μ_δ <= sr_max)]
+    
+    ax.hist(outer_region[outer_region.stream == False].μ_δ, density=False, color="lightgray", alpha=0.1, histtype="stepfilled", linewidth=2, bins=bins);
+    ax.hist(outer_region[outer_region.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", alpha=0.1, linewidth=2, bins=bins)
+
+    ax.hist(sb[sb.stream == False].μ_δ, density=False, color="lightgray", alpha=0.4, histtype="stepfilled", linewidth=2, bins=bins);
+    ax.hist(sb[sb.stream].μ_δ, color="crimson", density=False, histtype="stepfilled", alpha=0.4, linewidth=2, bins=bins)
+    
+    ax.hist(sr[sr.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region (Background)");
+    ax.hist(sr[sr.stream].μ_δ, color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region (Stream)")
+    
+    ax.set_title('Signal \& Sideband Regions')
+    ax.set_xlabel(r'$\mu_\delta$', fontsize=30)
+    ax.set_ylabel('Counts')
+    ax.set_yscale('log')
+#     ax.legend();
     if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"signal_sideband.png"))
+        plt.savefig(os.path.join(save_folder,"mu_delta_zoom.pdf"))    
+    
+#     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
+#     bins = np.linspace(sb_min,sb_max,50)
+#     plt.hist(sr.μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
+#     plt.hist(sb.μ_δ,bins=bins,color="orange",label="Sideband Region")
+#     plt.legend(frameon=False)
+#     plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
+#     plt.ylabel("Counts")
+#     if save_folder is not None:
+#         plt.savefig(os.path.join(save_folder,"signal_sideband.pdf"))
         
-    if "stream" in df.keys():
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
-        bins = np.linspace(sb_min,sb_max,30)
-        ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["crimson","lightgray"], label=["Stream", "Background"])
-        ax.set_yscale('log')
-        ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-        ax.set_ylabel("Counts")
-        ax.axvline(x=sr_min, color="black")
-        ax.axvline(x=sr_max, color="black")
-        ax.legend(frameon=False)
-        if save_folder is not None:
-            plt.savefig(os.path.join(save_folder,"signal_sideband_composition.png"))
+#     if "stream" in df.keys():
+#         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
+#         bins = np.linspace(sb_min,sb_max,30)
+#         ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["crimson","lightgray"], label=["Stream", "Background"])
+#         ax.set_yscale('log')
+#         ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
+#         ax.set_ylabel("Counts")
+#         ax.axvline(x=sr_min, color="black")
+#         ax.axvline(x=sr_max, color="black")
+#         ax.legend(frameon=False)
+#         if save_folder is not None:
+#             plt.savefig(os.path.join(save_folder,"signal_sideband_composition.pdf"))
 
     if "stream" in df.keys():
         try: n_sig_stream_stars = sr.stream.value_counts()[True]
@@ -435,7 +413,7 @@ def plot_results(test, top_n = [50], save_folder=None, verbose=True, show=True):
         plt.xlabel(r"$\alpha$ [\textdegree]")
         plt.ylabel(r"$\delta$ [\textdegree]")
         if save_folder is not None: 
-            plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
+#             plt.savefig(os.path.join(save_folder,"top_{}_stars.png".format(x)))
             plt.savefig(os.path.join(save_folder,"top_{}_stars.pdf".format(x)))
         if show: plt.show()
         plt.close()

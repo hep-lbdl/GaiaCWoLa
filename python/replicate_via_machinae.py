@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     ### Load file & preprocess
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
-    weight=1 
+    weight = 1 # can optionally weight the stream stars to make the problem easier for testing purposes
     df_all["weight"] = np.where(df_all['stream']==True, weight, 1)
     visualize_stream(df_all, save_folder=save_folder)
 
