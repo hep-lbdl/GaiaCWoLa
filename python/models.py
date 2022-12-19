@@ -22,7 +22,7 @@ from sklearn import preprocessing
 ### Custom imports
 from functions import *
 
-def train(df, layer_size, batch_size, dropout, epochs, patience, n_folds, best_of_n_loops, save_folder, other_callbacks=None, verbose=True):
+def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patience=30, n_folds=5, best_of_n_loops=3, save_folder=None, other_callbacks=None, verbose=True):
     os.makedirs(save_folder, exist_ok=True)
     if 'color' in df.keys(): 
         training_vars = ['μ_α','δ','α','color','mag']

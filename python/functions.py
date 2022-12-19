@@ -248,7 +248,7 @@ def signal_sideband(df, sr_factor = 2, sb_factor = 3, stream=None, save_folder=N
     ax.hist(df[df.stream == False].μ_δ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Background");
     ax.hist(df[df.stream].μ_δ, density=False, color="crimson", histtype="stepfilled", linewidth=2, bins=bins, label="Stream")
     ax.set_title('Full Patch')
-    ax.set_xlabel(r'$\mu_\delta$')
+    ax.set_xlabel(r'$\mu_\delta$', fontsize=20)
     ax.set_ylabel('Counts')
     ax.set_yscale('log')
     ax.legend(loc="upper left");
@@ -270,7 +270,7 @@ def signal_sideband(df, sr_factor = 2, sb_factor = 3, stream=None, save_folder=N
     ax.hist(sr[sr.stream].μ_δ, color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region (Stream)")
     
     ax.set_title('Signal \& Sideband Regions')
-    ax.set_xlabel(r'$\mu_\delta$', fontsize=30)
+    ax.set_xlabel(r'$\mu_\delta$', fontsize=20)
     ax.set_ylabel('Counts')
     ax.set_yscale('log')
 #     ax.legend();
