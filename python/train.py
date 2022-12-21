@@ -36,10 +36,12 @@ def get_args():
     parser.add_argument("stream", default=None, choices = ["gd1", "gd1_tail", "mock"], help="Choose which stream to analyze.")
     parser.add_argument("--data_folder", default="gaia_data", help="Specify the folder where the stream data lies.")
     parser.add_argument("--save_label", default='test', type=str, help="Folder name for saving training outputs & plots.")
-    parser.add_argument("--layer_size", default=50, type=int, help="Number of nodes per layer.")
+    parser.add_argument("--layer_size", default=200, type=int, help="Number of nodes per layer.")
     parser.add_argument("--patience", default=30, type=int, help="How many epochs of no val_loss improvement before the training is stopped.")
+    parser.add_argument("--sr_factor", default=1, type=float, help="Multiplicative factor for sigma to define signal region.")
+    parser.add_argument("--sb_factor", default=3, type=float, help="Multiplicative factor for sigma to define sideband region.")
     parser.add_argument("--epochs", default=100, type=int, help="Number of training epochs.")
-    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size during training.")
+    parser.add_argument("--batch_size", default=10000, type=int, help="Batch size during training.")
     parser.add_argument("--dropout", default=0.2, type=float, help="Dropout probability.")
     parser.add_argument("--n_folds", default=5, type=int, help="Number of k-folds.")
     parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
@@ -89,6 +91,11 @@ if __name__ == "__main__":
     save_folder = os.path.join(base_dir, "trained_models", save_label)
     os.makedirs(save_folder, exist_ok=True)
     
+    ### Setup logging
+    import logging
+    logging.basicConfig(filename=save_folder+'/log.log', level=logging.INFO)
+    logging.info("Stream = "+str(args.stream))
+    
     ### Save arguments
     with open(os.path.join(save_folder,'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
@@ -96,10 +103,13 @@ if __name__ == "__main__":
     ### Load file & preprocess
     df, file = load_file(stream = args.stream, folder = args.data_folder)
         
-    visualize_stream(df, save_folder = save_folder)
+    ### Make plots
+    plot_coords(df, save_folder = save_folder)
     
     ### Define signal & sideband regions 
-    df = signal_sideband(df, stream = args.stream, save_folder = save_folder)
+    logging.info("Signal Region scale factor = "+str(args.sr_factor))
+    logging.info("Sideband Region scale factor = "+str(args.sb_factor))
+    df = signal_sideband(df, sr_factor = args.sr_factor, sb_factor=args.sb_factor, stream = args.stream, save_folder = save_folder)
 
     print(args)
     
@@ -116,6 +126,20 @@ if __name__ == "__main__":
                  verbose=False,
         #           other_callbacks=[WandbCallback()]
          )
-    
+
+    print("======== SUMMARY ========)
+    for x in os.listdir(save_folder):
+        if x.startswith("kfold"):
+            for y in os.listdir(x+"/after_fiducial_cuts/"):
+                if y.startswith("top_"):
+                    print(x, y)
+        elif x.startswith("before_"):
+            for y in os.listdir(x):
+                if y.startswith("top_"):
+                    print(x, y)
+        elif x.startswith("after_"):
+            for y in os.listdir(x):
+                if y.startswith("top_"):
+                    print(x, y)
     print("Finished in {:,.1f} seconds.".format(time.time() - t0))
           
