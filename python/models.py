@@ -169,9 +169,13 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
     ### Stitch all the test sets into a mega-Frankenstein-test set of the entire dataset
     test_full = pd.concat([df for df in test_dataframes])
     plot_results(test_full, save_folder=os.path.join(save_folder, "before_fiducial_cuts"))
+    test_full.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
+
     if len(fiducial_cuts(test) > 0):
         plot_results(fiducial_cuts(test_full), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
-    return(test_full)
+        return(fiducial_cuts(test_full))
+    else:
+        return(test_full)
 
     
 
