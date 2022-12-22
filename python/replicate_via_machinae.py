@@ -61,15 +61,15 @@ if __name__ == "__main__":
     save_folder = os.path.join("./trained_models",save_label)
     os.makedirs(save_folder, exist_ok=True)
     
-    print(save_folder)
+    print("Saving to",save_folder)
     
     ### Save arguments
-    print(os.path.join(save_folder,'args.txt'))
     with open(os.path.join(save_folder,'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
     ### Load file & preprocess
     df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches_noduplicates.h5")
+    assert np.sum(df_all.stream) == 1958 # total number of GD-1 stars
     weight = 1 # can optionally weight the stream stars to make the problem easier for testing purposes
     df_all["weight"] = np.where(df_all['stream']==True, weight, 1)
     plot_coords(df_all, save_folder=save_folder)
@@ -81,9 +81,6 @@ if __name__ == "__main__":
     alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
     deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
-
-#     import code
-#     code.interact(local=locals())
     
     def train_on_patch(patch_id):
         α_min = limits.iloc[patch_id]["α_center"]-10
@@ -119,15 +116,16 @@ if __name__ == "__main__":
         print("Finished Patch #{}".format(str(patch_id)))
         return test
 
-#     pool = Pool(processes=8) # max = cpu_count()
-# #     results = pool.map(train_on_patch, df_all.patch_id.unique()) # for same 21 patches as Via Machinae
-#     results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
-#     pool.close()
-#     pool.join()    
+    pool = Pool(processes=8) # max = cpu_count()
+#     results = pool.map(train_on_patch, df_all.patch_id.unique()) # for same 21 patches as Via Machinae
+    results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
+    pool.close()
+    pool.join()    
 
-    results = []
-    for patch_id in limits.patch_id.unique():
-        results.append(train_on_patch(patch_id))
+    ### if not using multiprocessing, can just run in order. Pro: can use a GPU. Con: not in parallel! 
+#     results = []
+#     for patch_id in tqdm(limits.patch_id.unique(), desc="Patches"):
+#         results.append(train_on_patch(patch_id))
     
     all_gd1_stars = []
     cwola_stars = []
@@ -140,6 +138,12 @@ if __name__ == "__main__":
 
     all_gd1_stars = pd.concat([df for df in all_gd1_stars])
     cwola_stars = pd.concat([df for df in cwola_stars])
+    
+    all_gd1_stars.drop_duplicates(subset = 'index')
+    cwola_stars.drop_duplicates(subset = 'index')
+    
+    all_gd1_stars['α'] = all_gd1_stars['α']-360
+    cwola_stars['α'] = cwola_stars['α']-360
 
     plt.figure(dpi=200, figsize=(12,4))
     plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
@@ -150,9 +154,11 @@ if __name__ == "__main__":
                 color="crimson", label="CWoLa (Match)")
     plt.legend()
     plt.xlabel(r"$\alpha$ [\textdegree]");
-    plt.xlim(120,220);
+    plt.xlim(-241,-135);
     plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
-    
+
     print("CWoLa-identified stars:", cwola_stars.stream.value_counts())
-    print("Finished in {:,.1f} seconds.".format(time.time() - t0))
+    print("Purity = {:.0f}% in CWoLa-identified stars".format(100*len(cwola_stars[cwola_stars.stream])/len(cwola_stars)))
+    print("Purity = {:.0f}% vs. all of GD-1".format(100*len(cwola_stars[cwola_stars.stream])/len(all_gd1_stars)))
+    print("Finished in {:,.1f} hours.".format((time.time() - t0)/60/60))
           
