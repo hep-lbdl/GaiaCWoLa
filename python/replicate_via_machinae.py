@@ -35,8 +35,10 @@ def get_args():
     parser.add_argument("--dropout", default=0.2, type=float, help="Dropout probability.")
     parser.add_argument("--n_folds", default=5, type=int, help="Number of k-folds.")
     parser.add_argument("--sample_weight", default=1, type=float, help="If not equal to 1, adds an additional weight to each star in the stream.")
+    parser.add_argument("--sr_factor", default=1, type=float, help="Multiplicative factor for sigma to define signal region.")
+    parser.add_argument("--sb_factor", default=3, type=float, help="Multiplicative factor for sigma to define sideband region.")
     parser.add_argument("--best_of_n_loops", default=3, type=int, help="Repeats the training N times and picks the best weights.")
-    parser.add_argument("--gpu_id", default=0, type=int, help="Choose a GPU to run over (or -1 if you want to use CPU only).")
+    parser.add_argument("--gpu_id", default=-1, type=int, help="Choose a GPU to run over (or -1 if you want to use CPU only).")
 
     return parser.parse_args()
 
@@ -48,6 +50,7 @@ if __name__ == "__main__":
     if args.gpu_id != -1: 
         os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
         physical_devices = tf.config.list_physical_devices('GPU') 
+        print(physical_devices)
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
     else: 
         print("Using CPU only")
@@ -58,15 +61,18 @@ if __name__ == "__main__":
     save_folder = os.path.join("./trained_models",save_label)
     os.makedirs(save_folder, exist_ok=True)
     
+    print(save_folder)
+    
     ### Save arguments
+    print(os.path.join(save_folder,'args.txt'))
     with open(os.path.join(save_folder,'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
     ### Load file & preprocess
-    df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches.h5")
+    df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches_noduplicates.h5")
     weight = 1 # can optionally weight the stream stars to make the problem easier for testing purposes
     df_all["weight"] = np.where(df_all['stream']==True, weight, 1)
-    visualize_stream(df_all, save_folder=save_folder)
+    plot_coords(df_all, save_folder=save_folder)
 
     ## Scan over patches
     target_stream = []
@@ -76,22 +82,25 @@ if __name__ == "__main__":
     deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
     limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
 
+#     import code
+#     code.interact(local=locals())
+    
     def train_on_patch(patch_id):
-#         α_min = limits.iloc[patch_id]["α_center"]-10
-#         α_max = limits.iloc[patch_id]["α_center"]+10
-#         δ_min = limits.iloc[patch_id]["δ_center"]-10
-#         δ_max = limits.iloc[patch_id]["δ_center"]+10
-#         df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
-#                      (δ_min < df_all.δ) & (df_all.δ < δ_max)])
-        df = df_all[df_all.patch_id == patch_id]
-        df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag'])
+        α_min = limits.iloc[patch_id]["α_center"]-10
+        α_max = limits.iloc[patch_id]["α_center"]+10
+        δ_min = limits.iloc[patch_id]["δ_center"]-10
+        δ_max = limits.iloc[patch_id]["δ_center"]+10
+        df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
+                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])
+        
+#         df = df_all[df_all.patch_id == patch_id] # for 21 patches
+        df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag']) # just in case
         if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
-            visualize_stream(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
+            os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
+            plot_coords(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
             df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
-#                             sb_min = df[df.stream].μ_δ.min(),
-#                             sr_min = df[df.stream].μ_δ.min()+1,
-#                             sr_max = df[df.stream].μ_δ.max()-1,
-#                             sb_max = df[df.stream].μ_δ.max(), 
+                          sr_factor = args.sr_factor,
+                          sb_factor = args.sb_factor,
                             verbose=False,
                             )
             tf.keras.backend.clear_session()
@@ -110,10 +119,15 @@ if __name__ == "__main__":
         print("Finished Patch #{}".format(str(patch_id)))
         return test
 
-    pool = Pool(processes=8) # max = cpu_count()
-    results = pool.map(train_on_patch, df_all.patch_id.unique()) # use limits.patch_id.unique() for rectangular scan
-    pool.close()
-    pool.join()    
+#     pool = Pool(processes=8) # max = cpu_count()
+# #     results = pool.map(train_on_patch, df_all.patch_id.unique()) # for same 21 patches as Via Machinae
+#     results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
+#     pool.close()
+#     pool.join()    
+
+    results = []
+    for patch_id in limits.patch_id.unique():
+        results.append(train_on_patch(patch_id))
     
     all_gd1_stars = []
     cwola_stars = []
