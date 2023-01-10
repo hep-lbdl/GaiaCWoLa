@@ -24,10 +24,7 @@ from functions import *
 
 def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patience=30, n_folds=5, best_of_n_loops=3, save_folder=None, other_callbacks=None, verbose=True):
     os.makedirs(save_folder, exist_ok=True)
-    if 'color' in df.keys(): 
-        training_vars = ['μ_α','δ','α','color','mag']
-    elif 'b-r' in df.keys():
-        training_vars = ['μ_α','δ','α','g','b-r']
+    training_vars = ['ϕ', 'λ', 'μ_ϕcosλ', 'b-r', 'g']
    
     ### Explicitly get indices of stars for each k-fold
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=15)

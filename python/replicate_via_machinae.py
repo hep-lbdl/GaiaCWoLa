@@ -67,58 +67,70 @@ if __name__ == "__main__":
     with open(os.path.join(save_folder,'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
-    ### Load file & preprocess
-    df_all = pd.read_hdf("./gaia_data/gd1/gd1_allpatches_noduplicates.h5")
-    assert np.sum(df_all.stream) == 1958 # total number of GD-1 stars
-    weight = 1 # can optionally weight the stream stars to make the problem easier for testing purposes
-    df_all["weight"] = np.where(df_all['stream']==True, weight, 1)
-    plot_coords(df_all, save_folder=save_folder)
+    import os
+    print(os.getcwd())
+    
+    patch_list = [
+     # b = 33.7 
+     './gaia_data/gd1/gaiascan_l195.0_b33.7_ra128.4_dec28.8.npy',
+     './gaia_data/gd1/gaiascan_l210.0_b33.7_ra132.6_dec16.9.npy',
+     './gaia_data/gd1/gaiascan_l225.0_b33.7_ra138.1_dec5.7.npy', 
+     # b = 41.8 
+     './gaia_data/gd1/gaiascan_l187.5_b41.8_ra136.5_dec36.1.npy',
+     './gaia_data/gd1/gaiascan_l202.5_b41.8_ra138.8_dec25.1.npy',
+     './gaia_data/gd1/gaiascan_l217.5_b41.8_ra142.7_dec14.5.npy', 
+     # b = 50.2 
+     './gaia_data/gd1/gaiascan_l99.0_b50.2_ra224.7_dec60.6.npy',
+     './gaia_data/gd1/gaiascan_l117.0_b50.2_ra202.4_dec66.5.npy',
+     './gaia_data/gd1/gaiascan_l135.0_b50.2_ra174.3_dec65.1.npy',
+     './gaia_data/gd1/gaiascan_l153.0_b50.2_ra156.2_dec57.5.npy',
+     './gaia_data/gd1/gaiascan_l171.0_b50.2_ra148.6_dec47.0.npy',
+     './gaia_data/gd1/gaiascan_l189.0_b50.2_ra146.9_dec35.6.npy',
+     './gaia_data/gd1/gaiascan_l207.0_b50.2_ra148.6_dec24.2.npy',
+     # b = 58.4 
+     './gaia_data/gd1/gaiascan_l101.2_b58.4_ra212.7_dec55.2.npy',
+     './gaia_data/gd1/gaiascan_l123.8_b58.4_ra192.0_dec58.7.npy',
+     './gaia_data/gd1/gaiascan_l146.2_b58.4_ra171.8_dec54.7.npy',
+     './gaia_data/gd1/gaiascan_l168.8_b58.4_ra160.5_dec45.5.npy',
+     './gaia_data/gd1/gaiascan_l191.2_b58.4_ra156.9_dec34.1.npy',
+     # b = 66.4 
+     './gaia_data/gd1/gaiascan_l105.0_b66.4_ra203.7_dec49.1.npy',
+     './gaia_data/gd1/gaiascan_l135.0_b66.4_ra185.4_dec50.0.npy',
+     './gaia_data/gd1/gaiascan_l165.0_b66.4_ra171.4_dec43.0.npy',    
+    ]
 
     ## Scan over patches
     target_stream = []
     top_stars = []
     n_patches = args.n_patches
-    alphas = np.linspace(df_all[df_all.stream].α.min(), df_all[df_all.stream].α.max(), n_patches)
-    deltas = np.array([df_all[(df_all.stream & (np.abs(df_all.α - alpha) < 5))].δ.mean() for alpha in alphas])
-    limits = pd.DataFrame(zip(np.arange(len(alphas)),alphas,deltas), columns=["patch_id","α_center", "δ_center"])
-    
-    def train_on_patch(patch_id):
-        α_min = limits.iloc[patch_id]["α_center"]-10
-        α_max = limits.iloc[patch_id]["α_center"]+10
-        δ_min = limits.iloc[patch_id]["δ_center"]-10
-        δ_max = limits.iloc[patch_id]["δ_center"]+10
-        df = (df_all[(α_min < df_all.α) & (df_all.α < α_max) & 
-                     (δ_min < df_all.δ) & (df_all.δ < δ_max)])
-        
-#         df = df_all[df_all.patch_id == patch_id] # for 21 patches
-        df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag']) # just in case
-        if np.sum(df.stream)/len(df) > 0.0001: # skip patches with hardly any stream stars
-            os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
-            plot_coords(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
-            df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
-                          sr_factor = args.sr_factor,
-                          sb_factor = args.sb_factor,
-                            verbose=False,
-                            )
-            tf.keras.backend.clear_session()
-            test = train(df_train, 
-              n_folds = args.n_folds, 
-              best_of_n_loops = args.best_of_n_loops,
-              layer_size = args.layer_size, 
-              batch_size = args.batch_size, 
-              dropout = args.dropout, 
-              epochs = args.epochs, 
-              patience = args.patience,
-              save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
-              verbose = False,
-            )
 
+    def train_on_patch(patch_id):
+        df = pd.read_hdf(patch_list[patch_id][:-4]+".h5")
+        os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
+        make_plots(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
+        df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+                      sr_factor = args.sr_factor,
+                      sb_factor = args.sb_factor,
+                        verbose=False,
+                        )
+        tf.keras.backend.clear_session()
+        test = train(df_train, 
+          n_folds = args.n_folds, 
+          best_of_n_loops = args.best_of_n_loops,
+          layer_size = args.layer_size, 
+          batch_size = args.batch_size, 
+          dropout = args.dropout, 
+          epochs = args.epochs, 
+          patience = args.patience,
+          save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
+          verbose = False,
+        )
         print("Finished Patch #{}".format(str(patch_id)))
         return test
 
     pool = Pool(processes=8) # max = cpu_count()
-#     results = pool.map(train_on_patch, df_all.patch_id.unique()) # for same 21 patches as Via Machinae
-    results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
+    results = pool.map(train_on_patch, np.arange(21)) # for same 21 patches as Via Machinae
+#     results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
     pool.close()
     pool.join()    
 
@@ -131,7 +143,7 @@ if __name__ == "__main__":
     cwola_stars = []
 
     for test in results:
-        n_top_stars = np.min([len(test[test.stream]),100])
+        n_top_stars = np.min([len(test[test.stream]),100]) # whichever's smaller: 100, or the number of stars in the patch
         patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
         all_gd1_stars.append(test[test.stream])
         cwola_stars.append(patch_top_stars)
@@ -139,18 +151,18 @@ if __name__ == "__main__":
     all_gd1_stars = pd.concat([df for df in all_gd1_stars])
     cwola_stars = pd.concat([df for df in cwola_stars])
     
+    all_gd1_stars.reset_index(inplace=True)
+    cwola_stars.reset_index(inplace=True)
+    
     all_gd1_stars.drop_duplicates(subset = 'index')
     cwola_stars.drop_duplicates(subset = 'index')
-    
-    all_gd1_stars['α'] = all_gd1_stars['α']-360
-    cwola_stars['α'] = cwola_stars['α']-360
 
     plt.figure(dpi=200, figsize=(12,4))
-    plt.scatter(all_gd1_stars.α, all_gd1_stars.δ, marker='.', s=2, 
+    plt.scatter(all_gd1_stars.α_wrapped-360, all_gd1_stars.δ, marker='.', s=2, 
                 color="lightgray", label="GD1")
-    plt.scatter(cwola_stars[cwola_stars.stream == False].α, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
+    plt.scatter(cwola_stars[cwola_stars.stream == False].α_wrapped-360, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
                 color="darkorange", label="CWoLa (Non-Match)")
-    plt.scatter(cwola_stars[cwola_stars.stream].α, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
+    plt.scatter(cwola_stars[cwola_stars.stream].α_wrapped-360, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
                 color="crimson", label="CWoLa (Match)")
     plt.legend()
     plt.xlabel(r"$\alpha$ [\textdegree]");
