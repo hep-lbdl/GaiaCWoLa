@@ -128,16 +128,15 @@ if __name__ == "__main__":
         print("Finished Patch #{}".format(str(patch_id)))
         return test
 
-    pool = Pool(processes=8) # max = cpu_count()
-    results = pool.map(train_on_patch, np.arange(21)) # for same 21 patches as Via Machinae
-#     results = pool.map(train_on_patch, limits.patch_id.unique()) # for rectangular scan
-    pool.close()
-    pool.join()    
+#     pool = Pool(processes=8) # max = cpu_count()
+#     results = pool.map(train_on_patch, np.arange(21)) # for same 21 patches as Via Machinae
+#     pool.close()
+#     pool.join()    
 
-    ### if not using multiprocessing, can just run in order. Pro: can use a GPU. Con: not in parallel! 
-#     results = []
-#     for patch_id in tqdm(limits.patch_id.unique(), desc="Patches"):
-#         results.append(train_on_patch(patch_id))
+    ## if not using multiprocessing, can just run in order. Pro: can use a GPU. Con: not in parallel! 
+    results = []
+    for patch_id in tqdm(np.arange(21), desc="Patches"):
+        results.append(train_on_patch(patch_id))
     
     all_gd1_stars = []
     cwola_stars = []
