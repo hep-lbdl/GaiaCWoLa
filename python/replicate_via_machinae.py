@@ -39,6 +39,8 @@ def get_args():
     parser.add_argument("--sb_factor", default=3, type=float, help="Multiplicative factor for sigma to define sideband region.")
     parser.add_argument("--best_of_n_loops", default=3, type=int, help="Repeats the training N times and picks the best weights.")
     parser.add_argument("--gpu_id", default=-1, type=int, help="Choose a GPU to run over (or -1 if you want to use CPU only).")
+    parser.add_argument("--scan_over_mu_phi", action="store_true")
+    parser.add_argument("--train_after_cuts", action="store_true")
 
     return parser.parse_args()
 
@@ -106,6 +108,11 @@ if __name__ == "__main__":
 
     def train_on_patch(patch_id):
         df = pd.read_hdf(patch_list[patch_id][:-4]+".h5")
+        
+        if args.train_after_cuts:
+            ### Apply fiducial cuts BEFORE training
+            df = fiducial_cuts(df)
+        
         os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
         make_plots(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
         df_train = signal_sideband(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)),
@@ -119,6 +126,7 @@ if __name__ == "__main__":
           best_of_n_loops = args.best_of_n_loops,
           layer_size = args.layer_size, 
           batch_size = args.batch_size, 
+          scan_over_mu_phi = args.scan_over_mu_phi,
           dropout = args.dropout, 
           epochs = args.epochs, 
           patience = args.patience,
