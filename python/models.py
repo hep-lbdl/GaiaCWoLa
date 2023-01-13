@@ -38,7 +38,7 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
     ### Loop through the k-folds
     fold_labels = np.arange(len(fold_stars))
     test_dataframes = []
-    for fold in tqdm(fold_labels, desc="[Step 1] k-fold"):
+    for fold in fold_labels:
         save_folder_fold = os.path.join(save_folder,"kfold_{}".format(fold))
         
         ### Define test set
@@ -46,7 +46,7 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
         
         ### Loop through all remaining val sets
         test_scores = []
-        for val_set in tqdm(np.delete(fold_labels, fold), desc="[Step 2] Validation set (x{})".format(best_of_n_loops)):
+        for val_set in np.delete(fold_labels, fold):
             ### Make save folder
             save_folder_val = os.path.join(save_folder,"kfold_{}".format(fold),"val_set_{}".format(val_set))
             os.makedirs(save_folder_val, exist_ok=True)
@@ -170,13 +170,10 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
     test_full = pd.concat([df for df in test_dataframes])
     plot_results(test_full, save_folder=os.path.join(save_folder, "before_fiducial_cuts"))
     test_full.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
-    
-    return(test_full)
-#     if len(fiducial_cuts(test) > 0):
-#         plot_results(fiducial_cuts(test_full), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
-#         return(fiducial_cuts(test_full))
-#     else:
-#         return(test_full)
 
+    if len(fiducial_cuts(test) > 0):
+        plot_results(fiducial_cuts(test_full), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
+        
+    return(test_full)
     
 
