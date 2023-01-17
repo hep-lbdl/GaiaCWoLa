@@ -251,87 +251,76 @@ def plot_coords(df, save_folder=None):
 #         plt.savefig(os.path.join(save_folder,"input_variables.png"))
         plt.savefig(os.path.join(save_folder,"input_variables.pdf"))
     
-def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True):
+def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True, scan_over_mu_phi=False):
     
     print("SR factor:", sr_factor)
     print("SB factor:", sb_factor)
+    
+    if scan_over_mu_phi:
+        var = "μ_ϕcosλ"
+    else:
+        var = "μ_λ"
+        
+    print("Scanning over "+str(var))
     
     if sb_min is not None:
         sb_min = sb_min
         sb_max = sb_max
         sr_min = sr_min
-        sr_max = sr_max
-        
+        sr_max = sr_max    
     else: 
-        sb_min = df[df.stream].μ_λ.median()-sb_factor*df[df.stream].μ_λ.std()
-        sb_max = df[df.stream].μ_λ.median()+sb_factor*df[df.stream].μ_λ.std()
-        sr_min = df[df.stream].μ_λ.median()-sr_factor*df[df.stream].μ_λ.std()
-        sr_max = df[df.stream].μ_λ.median()+sr_factor*df[df.stream].μ_λ.std()
-    
+        sb_min = df[df.stream][var].median()-sb_factor*df[df.stream][var].std()
+        sb_max = df[df.stream][var].median()+sb_factor*df[df.stream][var].std()
+        sr_min = df[df.stream][var].median()-sr_factor*df[df.stream][var].std()
+        sr_max = df[df.stream][var].median()+sr_factor*df[df.stream][var].std()
+        
     if verbose:
         print("Sideband region: [{:.1f},{:.1f}) & ({:.1f},{:.1f}]".format(sb_min, sr_min, sr_max, sb_max))
         print("Signal region: [{:.1f},{:.1f}]".format(sr_min,sr_max))
     
-    df_slice = df[(df.μ_λ >= sb_min) & (df.μ_λ <= sb_max)]
-    df_slice['label'] = np.where(((df_slice.μ_λ >= sr_min) & (df_slice.μ_λ <= sr_max)), 1, 0)
+    df_slice = df[(df[var] >= sb_min) & (df[var] <= sb_max)]
+    df_slice['label'] = np.where(((df_slice[var] >= sr_min) & (df_slice[var] <= sr_max)), 1, 0)
     
     sr = df_slice[df_slice.label == 1]
     sb = df_slice[df_slice.label == 0]
     if verbose: print("Total counts: SR = {:,}, SB = {:,}".format(len(sr), len(sb)))
 
-    outer_region = df[(df.μ_λ < sb_min) | (df.μ_λ > sb_max)]
-    sb = df[(df.μ_λ >= sb_min) & (df.μ_λ <= sb_max)]
-    sr = df[(df.μ_λ >= sr_min) & (df.μ_λ <= sr_max)]    
+    outer_region = df[(df[var] < sb_min) | (df[var] > sb_max)]
+    sb = df[(df[var] >= sb_min) & (df[var] <= sb_max)]
+    sr = df[(df[var] >= sr_min) & (df[var] <= sr_max)]    
         
     bins = np.linspace(sb_min - (sr_min - sb_min), sb_max + (sb_max - sr_max), 40)
 
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,5), dpi=150, tight_layout=True) 
     ax = axs[0]
-    ax.hist(outer_region[outer_region.stream == False].μ_λ, density=False, color="lightgray", alpha=0.1, histtype="stepfilled", linewidth=2, bins=bins, label="Outer Region");
-    ax.hist(sb[sb.stream == False].μ_λ, density=False, color="lightgray", alpha=0.4, histtype="stepfilled", linewidth=2, bins=bins, label="Sideband Region");
-    ax.hist(sr[sr.stream == False].μ_λ, density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region");
+    ax.hist(outer_region[outer_region.stream == False][var], density=False, color="lightgray", alpha=0.1, histtype="stepfilled", linewidth=2, bins=bins, label="Outer Region");
+    ax.hist(sb[sb.stream == False][var], density=False, color="lightgray", alpha=0.4, histtype="stepfilled", linewidth=2, bins=bins, label="Sideband Region");
+    ax.hist(sr[sr.stream == False][var], density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region");
     ax.set_title('Background Stars')
-    ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
+    if var == "μ_ϕcosλ": 
+        ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
+    else:
+        ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
     ax.set_ylabel('Counts')
 #     ax.set_yscale('log')
     ax.legend(loc="upper left");
     
     ax = axs[1]
-    ax.hist(outer_region[outer_region.stream].μ_λ, density=False, color="crimson", histtype="stepfilled", alpha=0.1, linewidth=2, bins=bins, label="Outer Region")
-    ax.hist(sb[sb.stream].μ_λ, color="crimson", density=False, histtype="stepfilled", alpha=0.4, linewidth=2, bins=bins, label="Sideband Region")
-    ax.hist(sr[sr.stream].μ_λ, color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region")
+    ax.hist(outer_region[outer_region.stream][var], density=False, color="crimson", histtype="stepfilled", alpha=0.1, linewidth=2, bins=bins, label="Outer Region")
+    ax.hist(sb[sb.stream][var], color="crimson", density=False, histtype="stepfilled", alpha=0.4, linewidth=2, bins=bins, label="Sideband Region")
+    ax.hist(sr[sr.stream][var], color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region")
     
     ax.set_title('Stream Stars')
-    ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
+    if var == "μ_ϕcosλ": 
+        ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
+    else:
+        ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
     ax.set_ylabel('Counts')
 #     ax.set_yscale('log')
     ax.legend();
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_lambda.pdf"))    
     
-#     plt.figure(figsize=(4,3), dpi=150, tight_layout=True)
-#     bins = np.linspace(sb_min,sb_max,50)
-#     plt.hist(sr.μ_δ,bins=bins,color="dodgerblue",label="Signal Region")
-#     plt.hist(sb.μ_δ,bins=bins,color="orange",label="Sideband Region")
-#     plt.legend(frameon=False)
-#     plt.xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-#     plt.ylabel("Counts")
-#     if save_folder is not None:
-#         plt.savefig(os.path.join(save_folder,"signal_sideband.pdf"))
-        
-#     if "stream" in df.keys():
-#         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,3), dpi=150, tight_layout=True)
-#         bins = np.linspace(sb_min,sb_max,30)
-#         ax.hist([df[df.stream].μ_δ, df[df.stream == False].μ_δ], bins=bins, stacked=True, color=["crimson","lightgray"], label=["Stream", "Background"])
-#         ax.set_yscale('log')
-#         ax.set_xlabel(r"$\mu_\delta$ [$\mu$as/year]")
-#         ax.set_ylabel("Counts")
-#         ax.axvline(x=sr_min, color="black")
-#         ax.axvline(x=sr_max, color="black")
-#         ax.legend(frameon=False)
-#         if save_folder is not None:
-#             plt.savefig(os.path.join(save_folder,"signal_sideband_composition.pdf"))
-
     if "stream" in df.keys():
         try: n_sig_stream_stars = sr.stream.value_counts()[True]
         except: n_sig_stream_stars = 0

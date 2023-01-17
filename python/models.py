@@ -122,7 +122,7 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
                             batch_size=batch_size,
                             validation_data=(val_x, val_y),
                             callbacks = callbacks_list,
-                            verbose = int(verbose),
+                            verbose = 0,
                            )
 
                 ### Save training losses & accuracies

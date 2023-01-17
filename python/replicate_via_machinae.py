@@ -119,6 +119,7 @@ if __name__ == "__main__":
                       sr_factor = args.sr_factor,
                       sb_factor = args.sb_factor,
                         verbose=False,
+                        scan_over_mu_phi=args.scan_over_mu_phi
                         )
         tf.keras.backend.clear_session()
         test = train(df_train, 
