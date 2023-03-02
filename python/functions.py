@@ -32,7 +32,7 @@ plt.rcParams.update({
 
 def load_file(filename = "../gaia_data/gd1/gaiascan_l207.0_b50.2_ra148.6_dec24.2.npy"): # default patch from Via Machinae
     column_names = ["μ_δ", "μ_α", "δ", "α", "b-r", "g", "ϕ", "λ", "μ_ϕcosλ", "μ_λ"]
-    gd1_stars = np.load('./gaia_data/gd1/gd1_stars.npy')
+    gd1_stars = np.load('../gaia_data/gd1/gd1_stars.npy')
     df = pd.DataFrame(np.load(filename), columns = column_names)
 
     ### Label stream stars 
@@ -68,42 +68,107 @@ def FilterGD1(stars, gd1_stars):
     return gd1stars,stars[gd1stars]
 
 def fiducial_cuts(df):
-    center_ϕ = 0.5*(np.max(df['ϕ']) + np.min(df['ϕ']))
-    center_λ = 0.5*(np.max(df['λ']) + np.min(df['λ']))
-    df = df[np.sqrt((df['ϕ'] - center_ϕ)**2 + (df['λ'] - center_λ)**2) < 10] # avoid edge effects
-    df = df[df.g < 20.2] # reduces streaking etc. 
+#     center_ϕ = 0.5*(np.max(df['ϕ']) + np.min(df['ϕ']))
+#     center_λ = 0.5*(np.max(df['λ']) + np.min(df['λ']))
+#     df = df[np.sqrt((df['ϕ'] - center_ϕ)**2 + (df['λ'] - center_λ)**2) < 10] # avoid edge effects
+    df = df[df.g < 20.2] # reduces streaking 
+#     df = df[(np.abs(df['μ_λ']) > 2) | (np.abs(df['μ_ϕcosλ']) > 2)] # exclude stars near 0 proper motion
+#     df = df[(df['μ_λ']**2 + df['μ_ϕcosλ']**2) > 4] # exclude stars near 0 proper motion
     df = df[(0.5 <= df['b-r']) & (df['b-r'] <= 1)] # cold stellar streams in particular
-    df = df[(np.abs(df['μ_λ']) > 2) | (np.abs(df['μ_ϕcosλ']) > 2)] # exclude stars near 0 proper motion
     return df
 
-def make_plots(df, save_folder = None): 
-    fig = plt.figure(figsize=(12,4), dpi=200, tight_layout=True)
-    ax = fig.add_subplot(131)
-    ax.hexbin(df['ϕ'], df['λ'], bins=200, cmap="Blues")
-    ax.scatter(df[df.stream]['ϕ'], df[df.stream]['λ'], marker='.', s=5, color='red')
-#     circle = plt.Circle((0, 0), 10, color='k',lw=1,fill=False)
-#     ax.add_patch(circle)
-    ax.set_xlabel(r'$\phi~(^\circ)$',fontsize=20)
-    ax.set_ylabel(r'$\lambda~(^\circ)$',fontsize=20)
-#     ax.set_xlim(-11,11);
-#     ax.set_ylim(-11,11);
+def make_plots(df, save_folder = "../plots"): 
+#     fig = plt.figure(figsize=(12,4), dpi=200, tight_layout=True)
+#     ax = fig.add_subplot(131)
+#     ax.hexbin(df['ϕ'], df['λ'], bins=200, cmap="Greys")
+#     ax.scatter(df[df.stream]['ϕ'], df[df.stream]['λ'], marker='.', s=5, color='crimson')
+# #     circle = plt.Circle((0, 0), 10, color='k',lw=1,fill=False)
+# #     ax.add_patch(circle)
+#     ax.set_xlabel(r'$\phi~(^\circ)$',fontsize=20)
+#     ax.set_ylabel(r'$\lambda~(^\circ)$',fontsize=20)
+# #     ax.set_xlim(-11,11);
+# #     ax.set_ylim(-11,11);
 
-    ax = fig.add_subplot(132)
-    ax.hexbin(df['μ_ϕcosλ'], df['μ_λ'], cmap='Blues', bins='log', gridsize=400, mincnt=1)
-    ax.scatter(df[df.stream]['μ_ϕcosλ'], df[df.stream]['μ_λ'], marker='.', s=5, color='red')
-    ax.set_xlim(-30,15)
-    ax.set_ylim(-30,15)
-    ax.set_xlabel(r'$\mu_\phi^*$ (mas/yr)',fontsize=20)
-    ax.set_ylabel(r'$\mu_\lambda$ (mas/yr)',fontsize=20)
+#     ax = fig.add_subplot(132)
+#     ax.hexbin(df['μ_ϕcosλ'], df['μ_λ'], cmap='Greys', bins='log', gridsize=400, mincnt=1)
+#     ax.scatter(df[df.stream]['μ_ϕcosλ'], df[df.stream]['μ_λ'], marker='.', s=5, color='crimson')
+#     ax.set_xlim(-30,15)
+#     ax.set_ylim(-30,15)
+#     ax.set_xlabel(r'$\mu_\phi^*$ (mas/yr)',fontsize=20)
+#     ax.set_ylabel(r'$\mu_\lambda$ (mas/yr)',fontsize=20)
 
-    ax = fig.add_subplot(133)
-    ax.hexbin(df['b-r'], df['g'], cmap='Blues', bins='log', gridsize=400, mincnt=1)
-    ax.scatter(df[df.stream]['b-r'], df[df.stream]['g'], marker='.', s=5, color='red')
+#     ax = fig.add_subplot(133)
+#     ax.hexbin(df['b-r'], df['g'], cmap='Greys', bins='log', gridsize=400, mincnt=1)
+#     ax.scatter(df[df.stream]['b-r'], df[df.stream]['g'], marker='.', s=5, color='crimson')
+#     ax.set_xlabel(r'$b-r$',fontsize=20)
+#     ax.set_ylabel(r'$g$',fontsize=20)
+#     ax.set_xlim(0,3)
+#     ax.set_ylim(9,20.2)
+#     ax.invert_yaxis()
+#     plt.savefig(os.path.join(save_folder, "coords.pdf"))
+
+    fig = plt.figure(figsize=(13,8), dpi=200, tight_layout=True)
+
+    cmap = 'Greys'
+    bins_0 = (np.linspace(-15,15,100), np.linspace(-15,15,100))
+    bins_1 = (np.linspace(-20,10,100), np.linspace(-20,10,100))
+    bins_2 = (np.linspace(0,3,100),np.linspace(9,20.2,100))
+
+    ax = fig.add_subplot(231)
+    h = ax.hist2d(df['ϕ'], df['λ'], cmap=cmap, cmin=1, vmax=250, bins=bins_0)
+    # ax.scatter(df[df.stream]['ϕ'], df[df.stream]['λ'], marker='.', s=5, color='deeppink')
+    ax.set_xlabel(r'$\phi~[^\circ]$',fontsize=20)
+    ax.set_ylabel(r'$\lambda~[^\circ]$',fontsize=20)
+    ax.set_xlim(-15,15);
+    ax.set_ylim(-15,15);
+    fig.colorbar(h[3], ax=ax)
+
+    ax = fig.add_subplot(232)
+    h = ax.hist2d(df['μ_ϕcosλ'], df['μ_λ'], cmap=cmap, cmin=1, bins=bins_1)
+    ax.set_xlim(-20,10)
+    ax.set_ylim(-20,10)
+    ax.set_xlabel(r'$\mu_\phi^*$ [mas/yr]',fontsize=20)
+    ax.set_ylabel(r'$\mu_\lambda$ [mas/yr]',fontsize=20)
+    fig.colorbar(h[3], ax=ax)
+    ax.set_title('Full Patch', fontsize=25, pad=15)
+
+    ax = fig.add_subplot(233)
+    h = ax.hist2d(df['b-r'], df['g'], cmap=cmap, cmin=1, bins=bins_2)
+    ax.set_xlabel(r'$b-r$',fontsize=20)
+    ax.set_ylabel(r'$g$',fontsize=20)
+    ax.set_xlim(0,3)
+    # ax.set_ylim(9,20.2)
+    ax.invert_yaxis()
+    fig.colorbar(h[3], ax=ax)
+
+    ax = fig.add_subplot(234)
+    h = ax.hist2d(df[df.stream]['ϕ'], df[df.stream]['λ'], cmap='Reds', bins=bins_0, cmin=1)
+    # circle = plt.Circle((0, 0), 10, color='k',lw=1, linestyle='solid', fill=False)
+    # ax.add_patch(circle)
+    ax.set_xlabel(r'$\phi~[^\circ]$',fontsize=20)
+    ax.set_ylabel(r'$\lambda~[^\circ]$',fontsize=20)
+    ax.set_xlim(-15,15);
+    ax.set_ylim(-15,15);
+    fig.colorbar(h[3], ax=ax)
+
+    ax = fig.add_subplot(235)
+    h = ax.hist2d(df[df.stream]['μ_ϕcosλ'], df[df.stream]['μ_λ'], cmap='Reds',cmin=1, bins=bins_1)
+    ax.set_xlim(-20,10)
+    ax.set_ylim(-20,10)
+    ax.set_xlabel(r'$\mu_\phi^*$ [mas/yr]',fontsize=20)
+    ax.set_ylabel(r'$\mu_\lambda$ [mas/yr]',fontsize=20)
+    fig.colorbar(h[3], ax=ax)
+    ax.set_title('Labeled Stream Stars', fontsize=25, pad=15)
+
+    ax = fig.add_subplot(236)
+    h = ax.hist2d(df[df.stream]['b-r'], df[df.stream]['g'], cmap='Reds', cmin=1, bins=bins_2)#(np.linspace(0.5,1,10),np.linspace(17,20.2,14)))
     ax.set_xlabel(r'$b-r$',fontsize=20)
     ax.set_ylabel(r'$g$',fontsize=20)
     ax.set_xlim(0,3)
     ax.set_ylim(9,20.2)
     ax.invert_yaxis()
+    fig.colorbar(h[3], ax=ax);
+
     plt.savefig(os.path.join(save_folder, "coords.pdf"))
 
 # def get_random_file(glob_path):
