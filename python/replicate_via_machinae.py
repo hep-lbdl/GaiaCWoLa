@@ -109,9 +109,10 @@ if __name__ == "__main__":
     def train_on_patch(patch_id):
         df = pd.read_hdf(patch_list[patch_id][:-4]+".h5")
         
-        if args.train_after_cuts:
-            ### Apply fiducial cuts BEFORE training
-            df = fiducial_cuts(df)
+        ### Apply fiducial cuts BEFORE training
+        df = df[df.g < 20.2]
+#         if args.train_after_cuts:
+# #             df = fiducial_cuts(df)
         
         os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
         make_plots(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
