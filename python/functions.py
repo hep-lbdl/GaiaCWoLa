@@ -19,7 +19,7 @@ from sklearn import preprocessing
 
 ### Plot setup
 plt.rcParams.update({
-    'figure.dpi': 100,
+    'figure.dpi': 200,
     "text.usetex": True,
     "pgf.rcfonts": False,
     "font.family": "serif",
