@@ -356,33 +356,33 @@ def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=N
         
     bins = np.linspace(sb_min - (sr_min - sb_min), sb_max + (sb_max - sr_max), 40)
 
-    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,5), dpi=150, tight_layout=True) 
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,5), dpi=300, tight_layout=True) 
     ax = axs[0]
-    ax.hist(outer_region[outer_region.stream == False][var], density=False, color="lightgray", alpha=0.1, histtype="stepfilled", linewidth=2, bins=bins, label="Outer Region");
-    ax.hist(sb[sb.stream == False][var], density=False, color="lightgray", alpha=0.4, histtype="stepfilled", linewidth=2, bins=bins, label="Sideband Region");
-    ax.hist(sr[sr.stream == False][var], density=False, color="lightgray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region");
-    ax.set_title('Background Stars')
+    ax.hist(outer_region[outer_region.stream == False][var], density=False, color="lightgray", alpha=0.3, histtype="stepfilled", linewidth=2, bins=bins, label="Outer Region");
+    ax.hist(sb[sb.stream == False][var], density=False, color="lightgray", alpha=1, histtype="stepfilled", linewidth=2, bins=bins, label="Sideband Region");
+    ax.hist(sr[sr.stream == False][var], density=False, color="gray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region");
+    ax.set_title('Background Stars', fontsize=23)
     if var == "μ_ϕcosλ": 
         ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
     else:
         ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
-    ax.set_ylabel('Counts')
+    ax.set_ylabel('Number of Stars', fontsize=20)
 #     ax.set_yscale('log')
-    ax.legend(loc="upper left");
+    ax.legend(loc="upper left", frameon=False);
     
     ax = axs[1]
-    ax.hist(outer_region[outer_region.stream][var], density=False, color="crimson", histtype="stepfilled", alpha=0.1, linewidth=2, bins=bins, label="Outer Region")
+    ax.hist(outer_region[outer_region.stream][var], density=False, color="crimson", histtype="stepfilled", alpha=0.25, linewidth=2, bins=bins, label="Outer Region")
     ax.hist(sb[sb.stream][var], color="crimson", density=False, histtype="stepfilled", alpha=0.4, linewidth=2, bins=bins, label="Sideband Region")
     ax.hist(sr[sr.stream][var], color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region")
     
-    ax.set_title('Stream Stars')
+    ax.set_title('Stream Stars', fontsize=23)
     if var == "μ_ϕcosλ": 
         ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
     else:
         ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
-    ax.set_ylabel('Counts')
+    ax.set_ylabel('Number of Stars', fontsize=20)
 #     ax.set_yscale('log')
-    ax.legend();
+    ax.legend(frameon=False);
     if save_folder is not None:
         plt.savefig(os.path.join(save_folder,"mu_lambda.pdf"))    
     
