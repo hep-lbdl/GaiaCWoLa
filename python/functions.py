@@ -380,7 +380,10 @@ def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=N
 #     ax.set_yscale('log')
     ax.legend(frameon=False);
     if save_folder is not None:
-        plt.savefig(os.path.join(save_folder,"mu_lambda.pdf"))    
+        if var == "μ_ϕcosλ": 
+            plt.savefig(os.path.join(save_folder,"mu_phi.pdf"))    
+        else: 
+            plt.savefig(os.path.join(save_folder,"mu_lambda.pdf"))    
     
     if "stream" in df.keys():
         try: n_sig_stream_stars = sr.stream.value_counts()[True]
