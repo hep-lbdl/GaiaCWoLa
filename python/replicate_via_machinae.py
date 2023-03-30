@@ -145,14 +145,14 @@ if __name__ == "__main__":
         pool.join()    
 
     else: ### if using a GPU, just run the patches in order
-        results = []
         for patch_id in tqdm(np.arange(21), desc="Patches"):
-            results.append(train_on_patch(patch_id))
+            _ = train_on_patch(patch_id) 
     
             all_gd1_stars = []
             cwola_stars = []
 
-            for test in results:
+            for test_file in glob(os.path.join(save_folder,"patches/patch*/df_test.h5")):
+                test = pd.read_hdf(test_file)
                 n_top_stars = 250
                 patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
                 all_gd1_stars.append(test[test.stream])
