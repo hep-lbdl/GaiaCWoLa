@@ -110,9 +110,9 @@ if __name__ == "__main__":
         df = pd.read_hdf(patch_list[patch_id][:-4]+".h5")
         
         ### Apply fiducial cuts BEFORE training
-        df = df[df.g < 20.2]
-#         if args.train_after_cuts:
-# #             df = fiducial_cuts(df)
+#         df = df[df.g < 20.2]
+        if args.train_after_cuts:
+            df = fiducial_cuts(df)
         
         os.makedirs(save_folder+"/patches/patch{}".format(str(patch_id)), exist_ok=True)
         make_plots(df, save_folder=save_folder+"/patches/patch{}".format(str(patch_id)))
@@ -149,35 +149,35 @@ if __name__ == "__main__":
         for patch_id in tqdm(np.arange(21), desc="Patches"):
             results.append(train_on_patch(patch_id))
     
-    all_gd1_stars = []
-    cwola_stars = []
+            all_gd1_stars = []
+            cwola_stars = []
 
-    for test in results:
-        n_top_stars = np.min([len(test[test.stream]),100]) # whichever's smaller: 100, or the number of stars in the patch
-        patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
-        all_gd1_stars.append(test[test.stream])
-        cwola_stars.append(patch_top_stars)
+            for test in results:
+                n_top_stars = 250
+                patch_top_stars = test.sort_values('nn_score',ascending=False)[:n_top_stars]
+                all_gd1_stars.append(test[test.stream])
+                cwola_stars.append(patch_top_stars)
 
-    all_gd1_stars = pd.concat([df for df in all_gd1_stars])
-    cwola_stars = pd.concat([df for df in cwola_stars])
-    
-    all_gd1_stars.reset_index(inplace=True)
-    cwola_stars.reset_index(inplace=True)
-    
-    all_gd1_stars.drop_duplicates(subset = 'index')
-    cwola_stars.drop_duplicates(subset = 'index')
+            all_gd1_stars = pd.concat([df for df in all_gd1_stars])
+            cwola_stars = pd.concat([df for df in cwola_stars])
 
-    plt.figure(dpi=200, figsize=(12,4))
-    plt.scatter(all_gd1_stars.α_wrapped-360, all_gd1_stars.δ, marker='.', s=2, 
-                color="lightgray", label="GD1")
-    plt.scatter(cwola_stars[cwola_stars.stream == False].α_wrapped-360, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
-                color="darkorange", label="CWoLa (Non-Match)")
-    plt.scatter(cwola_stars[cwola_stars.stream].α_wrapped-360, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
-                color="crimson", label="CWoLa (Match)")
-    plt.legend()
-    plt.xlabel(r"$\alpha$ [\textdegree]");
-    plt.xlim(-241,-135);
-    plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
+            all_gd1_stars.reset_index(inplace=True)
+            cwola_stars.reset_index(inplace=True)
+
+            all_gd1_stars.drop_duplicates(subset = 'index')
+            cwola_stars.drop_duplicates(subset = 'index')
+
+            plt.figure(dpi=200, figsize=(12,4))
+            plt.scatter(all_gd1_stars.α_wrapped-360, all_gd1_stars.δ, marker='.', s=2, 
+                        color="lightgray", label="GD1")
+            plt.scatter(cwola_stars[cwola_stars.stream == False].α_wrapped-360, cwola_stars[cwola_stars.stream == False].δ, marker='.', s=2, 
+                        color="darkorange", label="CWoLa (Non-Match)")
+            plt.scatter(cwola_stars[cwola_stars.stream].α_wrapped-360, cwola_stars[cwola_stars.stream].δ, marker='.', s=2, 
+                        color="crimson", label="CWoLa (Match)")
+            plt.legend()
+            plt.xlabel(r"$\alpha$ [\textdegree]");
+            plt.xlim(-241,-135);
+            plt.savefig(os.path.join(save_folder, "via_machinae_plot.png"))
 
     print("CWoLa-identified stars:", cwola_stars.stream.value_counts())
     print("Purity = {:.0f}% in CWoLa-identified stars".format(100*len(cwola_stars[cwola_stars.stream])/len(cwola_stars)))

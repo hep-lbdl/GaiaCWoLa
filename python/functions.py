@@ -68,12 +68,8 @@ def FilterGD1(stars, gd1_stars):
     return gd1stars,stars[gd1stars]
 
 def fiducial_cuts(df):
-#     center_ϕ = 0.5*(np.max(df['ϕ']) + np.min(df['ϕ']))
-#     center_λ = 0.5*(np.max(df['λ']) + np.min(df['λ']))
-#     df = df[np.sqrt((df['ϕ'] - center_ϕ)**2 + (df['λ'] - center_λ)**2) < 10] # avoid edge effects
     df = df[df.g < 20.2] # reduces streaking 
-#     df = df[(np.abs(df['μ_λ']) > 2) | (np.abs(df['μ_ϕcosλ']) > 2)] # exclude stars near 0 proper motion
-#     df = df[(df['μ_λ']**2 + df['μ_ϕcosλ']**2) > 4] # exclude stars near 0 proper motion
+    df = df[(np.abs(df['μ_λ']) > 2) | (np.abs(df['μ_ϕcosλ']) > 2)] # exclude stars near 0 proper motion
     df = df[(0.5 <= df['b-r']) & (df['b-r'] <= 1)] # cold stellar streams in particular
     return df
 
