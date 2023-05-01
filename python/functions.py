@@ -69,40 +69,11 @@ def FilterGD1(stars, gd1_stars):
 
 def fiducial_cuts(df):
     df = df[df.g < 20.2] # reduces streaking 
-    df = df[(np.abs(df['μ_λ']) > 2) | (np.abs(df['μ_ϕcosλ']) > 2)] # exclude stars near 0 proper motion
     df = df[(0.5 <= df['b-r']) & (df['b-r'] <= 1)] # cold stellar streams in particular
+    df = df[(np.abs(df['μ_ϕcosλ']) > 2) | (np.abs(df['μ_λ']) > 2)] # exclude stars near 0 proper motion
     return df
 
 def make_plots(df, save_folder = "../plots"): 
-#     fig = plt.figure(figsize=(12,4), dpi=200, tight_layout=True)
-#     ax = fig.add_subplot(131)
-#     ax.hexbin(df['ϕ'], df['λ'], bins=200, cmap="Greys")
-#     ax.scatter(df[df.stream]['ϕ'], df[df.stream]['λ'], marker='.', s=5, color='crimson')
-# #     circle = plt.Circle((0, 0), 10, color='k',lw=1,fill=False)
-# #     ax.add_patch(circle)
-#     ax.set_xlabel(r'$\phi~(^\circ)$',fontsize=20)
-#     ax.set_ylabel(r'$\lambda~(^\circ)$',fontsize=20)
-# #     ax.set_xlim(-11,11);
-# #     ax.set_ylim(-11,11);
-
-#     ax = fig.add_subplot(132)
-#     ax.hexbin(df['μ_ϕcosλ'], df['μ_λ'], cmap='Greys', bins='log', gridsize=400, mincnt=1)
-#     ax.scatter(df[df.stream]['μ_ϕcosλ'], df[df.stream]['μ_λ'], marker='.', s=5, color='crimson')
-#     ax.set_xlim(-30,15)
-#     ax.set_ylim(-30,15)
-#     ax.set_xlabel(r'$\mu_\phi^*$ (mas/yr)',fontsize=20)
-#     ax.set_ylabel(r'$\mu_\lambda$ (mas/yr)',fontsize=20)
-
-#     ax = fig.add_subplot(133)
-#     ax.hexbin(df['b-r'], df['g'], cmap='Greys', bins='log', gridsize=400, mincnt=1)
-#     ax.scatter(df[df.stream]['b-r'], df[df.stream]['g'], marker='.', s=5, color='crimson')
-#     ax.set_xlabel(r'$b-r$',fontsize=20)
-#     ax.set_ylabel(r'$g$',fontsize=20)
-#     ax.set_xlim(0,3)
-#     ax.set_ylim(9,20.2)
-#     ax.invert_yaxis()
-#     plt.savefig(os.path.join(save_folder, "coords.pdf"))
-
     fig = plt.figure(figsize=(13,8), dpi=200, tight_layout=True)
 
     cmap = 'Greys'
@@ -133,14 +104,11 @@ def make_plots(df, save_folder = "../plots"):
     ax.set_xlabel(r'$b-r$',fontsize=20)
     ax.set_ylabel(r'$g$',fontsize=20)
     ax.set_xlim(0,3)
-    # ax.set_ylim(9,20.2)
     ax.invert_yaxis()
     fig.colorbar(h[3], ax=ax)
 
     ax = fig.add_subplot(234)
     h = ax.hist2d(df[df.stream]['ϕ'], df[df.stream]['λ'], cmap='Reds', bins=bins_0, cmin=1)
-    # circle = plt.Circle((0, 0), 10, color='k',lw=1, linestyle='solid', fill=False)
-    # ax.add_patch(circle)
     ax.set_xlabel(r'$\phi~[^\circ]$',fontsize=20)
     ax.set_ylabel(r'$\lambda~[^\circ]$',fontsize=20)
     ax.set_xlim(-15,15);
@@ -352,33 +320,65 @@ def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=N
         
     bins = np.linspace(sb_min - (sr_min - sb_min), sb_max + (sb_max - sr_max), 40)
 
+    ### Make the plot
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10,5), dpi=300, tight_layout=True) 
+    bins = np.linspace(sb_min - (sr_min - sb_min), sb_max + (sb_max - sr_max), 50)
+
     ax = axs[0]
-    ax.hist(outer_region[outer_region.stream == False][var], density=False, color="lightgray", alpha=0.3, histtype="stepfilled", linewidth=2, bins=bins, label="Outer Region");
-    ax.hist(sb[sb.stream == False][var], density=False, color="lightgray", alpha=1, histtype="stepfilled", linewidth=2, bins=bins, label="Sideband Region");
-    ax.hist(sr[sr.stream == False][var], density=False, color="gray", histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region");
+    N, bins, patches = ax.hist(df[df.stream == False][var], edgecolor='None', bins=bins)
+    for i in range(len(patches)):
+        if bins[i] < sb_min or bins[i] > sb_max:
+            patches[i].set_alpha(0.4)
+            patches[i].set_fc('lightgray')
+        elif (sb_min <= bins[i] and bins[i] < sr_min) or (sr_max < bins[i] and bins[i] <= sb_max):
+            patches[i].set_fc('lightgray')
+        elif sr_min <= bins[i] and bins[i] <= sr_max:
+            patches[i].set_fc('gray')
+
+    from matplotlib.patches import Patch
+    custom_legend = [Patch(facecolor='lightgray', alpha=0.25, label='Outer Region'),
+                     Patch(facecolor='lightgray', alpha=1, label='Sideband Region'),
+                     Patch(facecolor='gray', alpha=1, label='Signal Region'),
+                    ]
     ax.set_title('Background Stars', fontsize=23)
     if var == "μ_ϕcosλ": 
         ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
     else:
         ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
     ax.set_ylabel('Number of Stars', fontsize=20)
-#     ax.set_yscale('log')
-    ax.legend(loc="upper left", frameon=False);
-    
+    ax.legend(handles=custom_legend, loc="upper left", frameon=False);
+
     ax = axs[1]
-    ax.hist(outer_region[outer_region.stream][var], density=False, color="crimson", histtype="stepfilled", alpha=0.25, linewidth=2, bins=bins, label="Outer Region")
-    ax.hist(sb[sb.stream][var], color="crimson", density=False, histtype="stepfilled", alpha=0.4, linewidth=2, bins=bins, label="Sideband Region")
-    ax.hist(sr[sr.stream][var], color="crimson", density=False, histtype="stepfilled", linewidth=2, bins=bins, label="Signal Region")
-    
+    N, bins, patches = ax.hist(df[df.stream == True][var], edgecolor='None', bins=bins)
+    for i in range(len(patches)):
+        if bins[i] < sb_min or bins[i] > sb_max:
+            patches[i].set_alpha(0.25)
+            patches[i].set_fc('crimson')
+        elif (sb_min <= bins[i] and bins[i] < sr_min) or (sr_max < bins[i] and bins[i] <= sb_max):
+            patches[i].set_alpha(0.4)
+            patches[i].set_fc('crimson')
+        elif sr_min <= bins[i] and bins[i] <= sr_max:
+            patches[i].set_fc('crimson')
+
+    from matplotlib.patches import Patch
+    custom_legend = [Patch(facecolor='crimson', alpha=0.25, label='Outer Region'),
+                     Patch(facecolor='crimson', alpha=0.4, label='Sideband Region'),
+                     Patch(facecolor='crimson', alpha=1, label='Signal Region'),
+                    ]
     ax.set_title('Stream Stars', fontsize=23)
     if var == "μ_ϕcosλ": 
         ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
     else:
         ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
     ax.set_ylabel('Number of Stars', fontsize=20)
-#     ax.set_yscale('log')
-    ax.legend(frameon=False);
+    ax.legend(handles=custom_legend, frameon=False);
+
+    ax.set_title('Stream Stars', fontsize=23)
+    if var == "μ_ϕcosλ": 
+        ax.set_xlabel(r'$\mu_\phi^*$ [mas/year]', fontsize=20)
+    else:
+        ax.set_xlabel(r'$\mu_\lambda$ [mas/year]', fontsize=20)
+    ax.set_ylabel('Number of Stars', fontsize=20)
     if save_folder is not None:
         if var == "μ_ϕcosλ": 
             plt.savefig(os.path.join(save_folder,"mu_phi.pdf"))    
