@@ -3,19 +3,6 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
-from scipy import stats
-from tqdm import tqdm 
-from glob import glob
-import random
-
-### ML imports
-from keras.layers import Input, Dense, Dropout
-from keras.models import Model, Sequential
-from keras import callbacks, regularizers
-from sklearn.metrics import roc_curve, auc,roc_auc_score
-from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
 
 ### Plot setup
 plt.rcParams.update({
@@ -29,43 +16,6 @@ plt.rcParams.update({
     "legend.fontsize": 11,
     "figure.max_open_warning": False,
 })
-
-def load_file(filename = "../gaia_data/gd1/gaiascan_l207.0_b50.2_ra148.6_dec24.2.npy"): # default patch from Via Machinae
-    column_names = ["μ_δ", "μ_α", "δ", "α", "b-r", "g", "ϕ", "λ", "μ_ϕcosλ", "μ_λ"]
-    gd1_stars = np.load('../gaia_data/gd1/gd1_stars.npy')
-    df = pd.DataFrame(np.load(filename), columns = column_names)
-
-    ### Label stream stars 
-    is_stream, stream = FilterGD1(np.array(df), gd1_stars)
-    df["stream"] = is_stream
-    
-    ### Wrap around alpha
-    df['α_wrapped'] = df['α'].apply(lambda x: x if x > 100 else x + 360)
-    return df
-
-def angular_distance(angle1,angle2): # function from David's file via_machinae.py, needed for FilterGD1 function
-    # inputs are np arrays of [ra,dec]
-    deltara=np.minimum(np.minimum(np.abs(angle1[:,0]-angle2[:,0]+360),np.abs(angle1[:,0]-angle2[:,0])),\
-                          np.abs(angle1[:,0]-angle2[:,0]-360))
-    deltadec=np.abs(angle1[:,1]-angle2[:,1])
-    return np.sqrt(deltara**2+deltadec**2)
-
-def FilterGD1(stars, gd1_stars):
-    gd1stars=np.zeros(len(stars))
-    for x in tqdm(gd1_stars):
-        ra=x[0]
-        dec=x[1]
-        pmra=x[2]
-        pmdec=x[3]
-        foundlist=angular_distance(np.dstack((stars[:,3],stars[:,2]))[0],np.array([[ra,dec]]))
-        foundlist=np.sqrt(foundlist**2+(stars[:,0]-pmdec)**2+(stars[:,1]-pmra)**2)   
-        foundlist=foundlist<.0001
-        if len(np.argwhere(foundlist))>1:
-            print(foundlist)
-        if len(np.argwhere(foundlist))==1:
-            gd1stars+=foundlist
-    gd1stars=gd1stars.astype('bool')
-    return gd1stars,stars[gd1stars]
 
 def fiducial_cuts(df):
     df = df[df.g < 20.2] # reduces streaking 
@@ -83,7 +33,6 @@ def make_plots(df, save_folder = "../plots"):
 
     ax = fig.add_subplot(231)
     h = ax.hist2d(df['ϕ'], df['λ'], cmap=cmap, cmin=1, vmax=250, bins=bins_0)
-    # ax.scatter(df[df.stream]['ϕ'], df[df.stream]['λ'], marker='.', s=5, color='deeppink')
     ax.set_xlabel(r'$\phi~[^\circ]$',fontsize=20)
     ax.set_ylabel(r'$\lambda~[^\circ]$',fontsize=20)
     ax.set_xlim(-15,15);
@@ -125,7 +74,7 @@ def make_plots(df, save_folder = "../plots"):
     ax.set_title('Labeled Stream Stars', fontsize=25, pad=15)
 
     ax = fig.add_subplot(236)
-    h = ax.hist2d(df[df.stream]['b-r'], df[df.stream]['g'], cmap='Reds', cmin=1, bins=bins_2)#(np.linspace(0.5,1,10),np.linspace(17,20.2,14)))
+    h = ax.hist2d(df[df.stream]['b-r'], df[df.stream]['g'], cmap='Reds', cmin=1, bins=bins_2)
     ax.set_xlabel(r'$b-r$',fontsize=20)
     ax.set_ylabel(r'$g$',fontsize=20)
     ax.set_xlim(0,3)
@@ -134,151 +83,6 @@ def make_plots(df, save_folder = "../plots"):
     fig.colorbar(h[3], ax=ax);
 
     plt.savefig(os.path.join(save_folder, "coords.pdf"))
-
-# def get_random_file(glob_path):
-#     file = random.choice(glob(glob_path))
-#     return(file)
-
-# def load_file(file = None, stream = None, folder = "../gaia_data/", percent_bkg = 100):
-#     ### Stream options: ["gd1", "gd1_tail", "mock", "jhelum"]
-#     if stream == "mock": 
-#         if file is not None:
-#             file = file
-#         else:
-#             file = os.path.join(folder,"mock_streams/gaiamock_ra156.2_dec57.5_stream_feh-1.6_v3_863.npy")
-# #             file = get_random_file(os.path.join(folder,"mock_streams/*.npy"))
-#         print(file)
-#         df = pd.DataFrame(np.load(file), columns=['μ_δ','μ_α','δ','α','mag','color','a','b','c','d','stream'])
-#         df['stream'] = df['stream']/100
-#         df['stream'] = df['stream'].astype(bool)
-
-#     elif stream == "gd1": 
-#         file = os.path.join(folder,"gd1/GD1-circle-140-30-15.pkl")
-#         df = np.load(file, allow_pickle = True)
-
-#         ### Select columns
-#         columns = ['pmdec','pmra','dec','ra','phot_g_mean_mag','phot_bp_mean_mag','phot_rp_mean_mag','streammask']
-#         df = df[columns]
-
-#         ### Create b-r & g columns; rename others
-#         df["b-r"] = df.phot_bp_mean_mag - df.phot_rp_mean_mag
-#         df.drop(columns = ['phot_bp_mean_mag','phot_rp_mean_mag'], inplace=True)
-#         df.rename(columns={'phot_g_mean_mag': 'g', 
-#                            'ra': 'α',
-#                            'dec': 'δ',
-#                            'pmra': 'μ_α',
-#                            'pmdec': 'μ_δ',
-#                            'streammask': 'stream'}, inplace=True)
-#         df["mag"] = df.g
-#         df["color"] = df["b-r"]
-#         df["weight"] = 1
-
-#     elif stream == "gd1_tail":
-# #         file = os.path.join(folder,"gd1_tail/gd1_tail.h5")
-#         file = os.path.join(folder,"gd1_tail/gd1_tail_optimized_patch.h5")
-#         df = pd.read_hdf(file)
-#         df = df.drop_duplicates(subset=['α','δ','μ_α','μ_δ','color','mag'])
-#         weight = 1 
-#         df["weight"] = np.where(df['stream']==True, weight, 1)
-
-#     elif stream == "gaia3":
-#         ### Note that we don't have stream labels here
-#         file = get_random_file(os.path.join(folder,"gaia3/*.npy"))
-#         print(file)
-#         df = pd.DataFrame(np.load(file)[:,[9,8,6,7,4,5]], columns=['μ_δ','μ_α','δ','α','mag','color'])        
-#     elif stream == "jhelum":
-#         ### Note that we don't have stream labels here
-#         file = get_random_file(os.path.join(folder,"jhelum/*.npy"))
-# #         file = "../GaiaCWoLa/gaia_data/jhelum/gaiascan_l303.8_b58.4_ra193.3_dec-4.5.npy"
-#         print(file)
-#         df = pd.DataFrame(np.load(file)[:,[9,8,6,7,4,5]], columns=['μ_δ','μ_α','δ','α','mag','color'])
-#     else:
-#         print("Stream not recognized.")
-        
-        
-#     ### Drop duplicate stars 
-#     if 'color' in df.keys(): 
-#         variables = ['μ_α','μ_δ','δ','α','color','mag']
-#     elif 'b-r' in df.keys():
-#         variables = ['μ_α','μ_δ','δ','α','g','b-r']
-#     df = df.drop_duplicates(subset=variables)
-    
-#     ### Drop any rows containing a NaN value
-#     df.dropna(inplace = True)
-
-#     ### Restrict data to a radius of 15
-#     center_α = 0.5*(df.α.min()+df.α.max())
-#     center_δ = 0.5*(df.δ.min()+df.δ.max())
-#     df = df[np.sqrt((df.δ-center_δ)**2+(df.α-center_α)**2) < 15]
-    
-#     if percent_bkg != 100 and "stream" in df.keys():
-#         ### Optional: reduce background
-#         n_sig = len(df[df.stream == True])
-#         n_bkg = len(df[df.stream == False])
-#         print("Before reduction, stream stars make up {:.3f}% of the dataset.".format(100*n_sig/len(df)))
-
-#         events_to_drop = np.random.choice(df[df.stream == False].index, int((1-percent_bkg/100)*n_bkg), replace=False)
-#         df = df.drop(events_to_drop)
-#         print("After reduction, stream stars make up {:.3f}% of the dataset.".format(100*n_sig/len(df)))
-    
-#     df.reset_index(inplace=True)
-#     return df, file
-
-def plot_coords(df, save_folder=None):
-    fig, axs = plt.subplots(nrows=2, ncols=3, dpi=200, figsize=(10,7), tight_layout=True)
-    
-    print(df.keys())
-    bins_ϕ=np.linspace(df['ϕ'].min(),df['ϕ'].max(),100)
-    bins_λ=np.linspace(df.λ.min(),df.λ.max(),100)
-    
-    cmap="binary"
-    labelsize=14
-    
-    ax = axs[0,0]
-    ax.hist2d(df.lon,df.lat, bins=[bins_ϕ,bins_λ], cmap=cmap)
-    ax.set_xlabel(r"$\phi$ [\textdegree]", fontsize=labelsize)
-    ax.set_ylabel(r"$\lambda$ [\textdegree]", fontsize=labelsize);
-    ax.set_title("Full Dataset", fontsize=16)
-    
-    ax = axs[1,0]
-    ax.hist2d(df[df.stream == True].ϕ,df[df.stream == True].λ, bins=[bins_ϕ,bins_λ], cmap=cmap)
-    ax.set_xlabel(r"$\phi$ [\textdegree]", fontsize=labelsize)
-    ax.set_ylabel(r"$\lambda$ [\textdegree]", fontsize=labelsize);
-    ax.set_title("Stream Only", fontsize=16);
-    
-    bins = np.linspace(-25,10,100)
-    ax = axs[0,1]
-    ax.hist2d(df.μ_α*np.cos(df.λ),df.μ_λ, bins=[bins,bins], cmap=cmap)
-    ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [mas/year]", fontsize=labelsize)
-    ax.set_ylabel(r"$\mu_\delta$ [mas/year]", fontsize=labelsize);
-    ax.set_title("Full Dataset", fontsize=16)
-    
-    ax = axs[1,1]
-    ax.hist2d(df[df.stream == True].μ_α*np.cos(df[df.stream == True].δ), df[df.stream == True].μ_δ, bins=[bins,bins], cmap=cmap)
-    ax.set_xlabel(r"$\mu_\alpha\cos(\delta)$ [mas/year]", fontsize=labelsize)
-    ax.set_ylabel(r"$\mu_\delta$ [mas/year]", fontsize=labelsize);
-    ax.set_title("Stream Only", fontsize=16);
-    
-    bins_color=np.linspace(df.color.min(),df.color.max(),100)
-    bins_mag=np.linspace(df.mag.min(),df.mag.max(),100)
-    
-    ax = axs[0,2]
-    ax.hist2d(df.color,df.mag, bins=[bins_color,bins_mag], cmap=cmap)
-    ax.set_ylim(ax.get_ylim()[::-1]) # reverse y axis to match Via Machinae plot
-    ax.set_xlabel(r"$b-r$", fontsize=labelsize)
-    ax.set_ylabel(r"$g$", fontsize=labelsize);
-    ax.set_title("Full Dataset", fontsize=16)
-    
-    ax = axs[1,2]
-    ax.hist2d(df[df.stream == True].color,df[df.stream == True].mag, bins=[bins_color,bins_mag], cmap=cmap)
-    ax.set_ylim(ax.get_ylim()[::-1]) # reverse y axis to match Via Machinae plot
-    ax.set_xlabel(r"$b-r$", fontsize=labelsize)
-    ax.set_ylabel(r"$g$", fontsize=labelsize);
-    ax.set_title("Stream Only", fontsize=16);
-    
-    if save_folder is not None:
-#         plt.savefig(os.path.join(save_folder,"input_variables.png"))
-        plt.savefig(os.path.join(save_folder,"input_variables.pdf"))
     
 def signal_sideband(df, sr_factor = 1, sb_factor = 3, save_folder=None, sb_min=None, sb_max=None, sr_min=None, sr_max=None, verbose=True, scan_over_mu_phi=False):
     
