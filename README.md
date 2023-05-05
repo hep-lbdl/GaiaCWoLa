@@ -15,12 +15,16 @@ notebooks
 ### Quickstart 
 Make sure you have `conda` installed on your system. 
 ```sh
-conda env create -n gaia -f requirements.yml # if this gives you trouble, try using requirements_no_builds.yml
+conda env create -n gaia -f requirements.yml
 conda activate gaia
 python -m ipykernel install --user --name gaia --display-name "gaia"
 jupyter lab
 ```
 Then, navigate to one of the notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
+
+### Datasets 
+- [Datasets needed to run notebooks/make_plots.ipynb]() 
+- [Full 21 patches of GD-1](https://zenodo.org/record/7897936#.ZFUQU-zMJqs)
 
 ### Further reading: 
 - [CWoLa Paper](https://arxiv.org/abs/1708.02949)
