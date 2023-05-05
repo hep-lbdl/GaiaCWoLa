@@ -32,3 +32,4 @@ notebooks
 - [Via Machinae 2.0](https://arxiv.org/abs/2303.01529)
 - [Matt's anomaly detection workshop talk](https://indico.desy.de/indico/event/25341/session/0/contribution/15/material/slides/0.pdf)
 - [Gaia Dataset Info](https://gea.esac.esa.int/archive/)
+- [GD-1 Labeling](https://doi.org/10.5281/zenodo.1295543)
