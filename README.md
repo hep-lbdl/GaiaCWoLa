@@ -1,19 +1,15 @@
-# GaiaCWoLa
+# Weakly-Supervised Anomaly Detection in the Milky Way 🌌
 
 ### Repository structure 
 ```sh
 python
 ├── functions.py # misc. functions, including plotting
-├── models.py # NN architecture 
-├── train.py # submit a training via the command line
-└── replicate_via_machinae.py # recreate full Via Machinae-style plot
+├── models.py # define NN architecture 
+├── run_mock_streams.py # apply CWoLa on 100 simulated streams
+└── full_gd1_scan.py # apply CWoLa on all 21 patches covering the GD-1 stream
 notebooks
-├── train.ipynb # generic training notebook, for testing/prototyping
-├── Example_Finding_GD1.ipynb # shows how to find GD1
-├── Example_Finding_GD1_Tail.ipynb # shows how to find the GD1 tail
-├── Example_Finding_Mock_Stream.ipynb # shows how to find a mock stream
-├── mislabeled_stream_stars.ipynb # shows how to find additional GD1 stream stars that should have been labeled
-└── all_gd1.ipynb # Work-in-progress, for iterating towards Via Machine-style plot
+├── example.ipynb # shows how to run CWoLa on a simulated stream and a real patch of GD-1
+└── make_plots.ipynb # shows how to replicate each of the figures in the paper
 ```
 
 ### Quickstart 
@@ -24,15 +20,11 @@ conda activate gaia
 python -m ipykernel install --user --name gaia --display-name "gaia"
 jupyter lab
 ```
-Then, navigate to one of the example notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
-
-Submit a training script: 
-```sh
-python python/train.py gd1 # other options: gd1_tail, mock
-```
+Then, navigate to one of the notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
 
 ### Further reading: 
 - [CWoLa Paper](https://arxiv.org/abs/1708.02949)
-- [Via Machinae Paper](https://arxiv.org/abs/2104.12789)
+- [Via Machinae 1.0](https://arxiv.org/abs/2104.12789)
+- [Via Machinae 2.0](https://arxiv.org/abs/2303.01529)
 - [Matt's anomaly detection workshop talk](https://indico.desy.de/indico/event/25341/session/0/contribution/15/material/slides/0.pdf)
 - [Gaia Dataset Info](https://gea.esac.esa.int/archive/)
