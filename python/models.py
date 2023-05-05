@@ -22,7 +22,7 @@ from sklearn import preprocessing
 ### Custom imports
 from functions import *
 
-def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patience=30, n_folds=5, best_of_n_loops=3, save_folder=None, other_callbacks=None, verbose=True, scan_over_mu_phi=False):
+def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patience=30, n_folds=5, best_of_n_loops=3, save_folder=None, other_callbacks=None, verbose=True, scan_over_mu_phi=False, apply_cuts=True):
     os.makedirs(save_folder, exist_ok=True)
     if scan_over_mu_phi:
         training_vars = ['ϕ', 'λ', 'μ_λ', 'b-r', 'g']
@@ -162,7 +162,7 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
         
         print("Plotting results before fiducial cuts...")
         plot_results(test, show=False, save_folder=os.path.join(save_folder_fold, "before_fiducial_cuts"))
-        if len(fiducial_cuts(test) > 0):
+        if apply_cuts and len(fiducial_cuts(test) > 0):
             print("Plotting results after fiducial cuts...")
             plot_results(fiducial_cuts(test), show=False, save_folder=os.path.join(save_folder_fold, "after_fiducial_cuts"))
 
@@ -171,7 +171,7 @@ def train(df, layer_size=200, batch_size=10000, dropout=0.2, epochs=100, patienc
     plot_results(test_full, save_folder=os.path.join(save_folder, "before_fiducial_cuts"))
     test_full.to_hdf(os.path.join(save_folder,"df_test.h5"), "df")
 
-    if len(fiducial_cuts(test) > 0):
+    if apply_cuts and len(fiducial_cuts(test) > 0):
         plot_results(fiducial_cuts(test_full), save_folder=os.path.join(save_folder, "after_fiducial_cuts"))
         
     return(test_full)
