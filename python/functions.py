@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 ### Plot setup
 plt.rcParams.update({
@@ -306,3 +307,39 @@ def plot_results(test, top_n = [50, 100], save_folder=None, verbose=True, show=T
         if show: plt.show()
         plt.close()
     
+def angular_distance(angle1,angle2): # function from David's file via_machinae.py, needed for FilterGD1 function
+    # inputs are np arrays of [ra,dec]
+    deltara=np.minimum(np.minimum(np.abs(angle1[:,0]-angle2[:,0]+360),np.abs(angle1[:,0]-angle2[:,0])),\
+                          np.abs(angle1[:,0]-angle2[:,0]-360))
+    deltadec=np.abs(angle1[:,1]-angle2[:,1])
+    return np.sqrt(deltara**2+deltadec**2)
+
+def FilterGD1(stars, gd1_stars):
+    gd1stars=np.zeros(len(stars))
+    for x in tqdm(gd1_stars):
+        ra=x[0]
+        dec=x[1]
+        pmra=x[2]
+        pmdec=x[3]
+        foundlist=angular_distance(np.dstack((stars[:,3],stars[:,2]))[0],np.array([[ra,dec]]))
+        foundlist=np.sqrt(foundlist**2+(stars[:,0]-pmdec)**2+(stars[:,1]-pmra)**2)   
+        foundlist=foundlist<.0001
+        if len(np.argwhere(foundlist))>1:
+            print(foundlist)
+        if len(np.argwhere(foundlist))==1:
+            gd1stars+=foundlist
+    gd1stars=gd1stars.astype('bool')
+    return gd1stars,stars[gd1stars]
+
+def load_file(filename):
+    column_names = ["μ_δ", "μ_α", "δ", "α", "b-r", "g", "ϕ", "λ", "μ_ϕcosλ", "μ_λ"]
+    gd1_stars = np.load('../gaia_data/gd1/gd1_stars.npy')
+    df = pd.DataFrame(np.load(filename), columns = column_names)
+
+    ### Label stream stars 
+    is_stream, stream = FilterGD1(np.array(df), gd1_stars)
+    df["stream"] = is_stream
+
+    ### Wrap around alpha
+    df['α_wrapped'] = df['α'].apply(lambda x: x if x > 100 else x + 360)
+    return df
