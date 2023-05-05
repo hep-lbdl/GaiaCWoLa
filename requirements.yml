@@ -1,4 +1,4 @@
-name: gaia_gpu
+name: gaia
 channels:
   - conda-forge
   - defaults
@@ -145,4 +145,3 @@ dependencies:
       - werkzeug==2.1.2
       - wrapt==1.14.1
       - zipp==3.8.0
-prefix: /clusterfs/ml4hep/mpettee/miniconda3/envs/gaia_gpu
