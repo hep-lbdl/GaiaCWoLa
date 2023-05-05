@@ -25,7 +25,7 @@ notebooks
 ```
 
 ### Datasets 
-- [Datasets needed to run notebooks/make_plots.ipynb]() 
+- [Datasets needed to run notebooks/make_plots.ipynb](https://doi.org/10.5281/zenodo.7897839) 
 - [Full 21 patches of GD-1](https://zenodo.org/record/7897936#.ZFUQU-zMJqs)
 
 ### Further reading: 
