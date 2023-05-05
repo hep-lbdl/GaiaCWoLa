@@ -70,33 +70,34 @@ if __name__ == "__main__":
     import os
     print(os.getcwd())
     
+    ### Note: these are the same patches as in https://arxiv.org/abs/2104.12789
     patch_list = [
      # b = 33.7 
-     './gaia_data/gd1/gaiascan_l195.0_b33.7_ra128.4_dec28.8.h5',
-     './gaia_data/gd1/gaiascan_l210.0_b33.7_ra132.6_dec16.9.h5',
-     './gaia_data/gd1/gaiascan_l225.0_b33.7_ra138.1_dec5.7.h5', 
+     './gaia_data/gd1/gaiascan_l195.0_b33.7_ra128.4_dec28.8.npy',
+     './gaia_data/gd1/gaiascan_l210.0_b33.7_ra132.6_dec16.9.npy',
+     './gaia_data/gd1/gaiascan_l225.0_b33.7_ra138.1_dec5.7.npy', 
      # b = 41.8 
-     './gaia_data/gd1/gaiascan_l187.5_b41.8_ra136.5_dec36.1.h5',
-     './gaia_data/gd1/gaiascan_l202.5_b41.8_ra138.8_dec25.1.h5',
-     './gaia_data/gd1/gaiascan_l217.5_b41.8_ra142.7_dec14.5.h5', 
+     './gaia_data/gd1/gaiascan_l187.5_b41.8_ra136.5_dec36.1.npy',
+     './gaia_data/gd1/gaiascan_l202.5_b41.8_ra138.8_dec25.1.npy',
+     './gaia_data/gd1/gaiascan_l217.5_b41.8_ra142.7_dec14.5.npy', 
      # b = 50.2 
-     './gaia_data/gd1/gaiascan_l99.0_b50.2_ra224.7_dec60.6.h5',
-     './gaia_data/gd1/gaiascan_l117.0_b50.2_ra202.4_dec66.5.h5',
-     './gaia_data/gd1/gaiascan_l135.0_b50.2_ra174.3_dec65.1.h5',
-     './gaia_data/gd1/gaiascan_l153.0_b50.2_ra156.2_dec57.5.h5',
-     './gaia_data/gd1/gaiascan_l171.0_b50.2_ra148.6_dec47.0.h5',
-     './gaia_data/gd1/gaiascan_l189.0_b50.2_ra146.9_dec35.6.h5',
-     './gaia_data/gd1/gaiascan_l207.0_b50.2_ra148.6_dec24.2.h5',
+     './gaia_data/gd1/gaiascan_l99.0_b50.2_ra224.7_dec60.6.npy',
+     './gaia_data/gd1/gaiascan_l117.0_b50.2_ra202.4_dec66.5.npy',
+     './gaia_data/gd1/gaiascan_l135.0_b50.2_ra174.3_dec65.1.npy',
+     './gaia_data/gd1/gaiascan_l153.0_b50.2_ra156.2_dec57.5.npy',
+     './gaia_data/gd1/gaiascan_l171.0_b50.2_ra148.6_dec47.0.npy',
+     './gaia_data/gd1/gaiascan_l189.0_b50.2_ra146.9_dec35.6.npy',
+     './gaia_data/gd1/gaiascan_l207.0_b50.2_ra148.6_dec24.2.npy',
      # b = 58.4 
-     './gaia_data/gd1/gaiascan_l101.2_b58.4_ra212.7_dec55.2.h5',
-     './gaia_data/gd1/gaiascan_l123.8_b58.4_ra192.0_dec58.7.h5',
-     './gaia_data/gd1/gaiascan_l146.2_b58.4_ra171.8_dec54.7.h5',
-     './gaia_data/gd1/gaiascan_l168.8_b58.4_ra160.5_dec45.5.h5',
-     './gaia_data/gd1/gaiascan_l191.2_b58.4_ra156.9_dec34.1.h5',
+     './gaia_data/gd1/gaiascan_l101.2_b58.4_ra212.7_dec55.2.npy',
+     './gaia_data/gd1/gaiascan_l123.8_b58.4_ra192.0_dec58.7.npy',
+     './gaia_data/gd1/gaiascan_l146.2_b58.4_ra171.8_dec54.7.npy',
+     './gaia_data/gd1/gaiascan_l168.8_b58.4_ra160.5_dec45.5.npy',
+     './gaia_data/gd1/gaiascan_l191.2_b58.4_ra156.9_dec34.1.npy',
      # b = 66.4 
-     './gaia_data/gd1/gaiascan_l105.0_b66.4_ra203.7_dec49.1.h5',
-     './gaia_data/gd1/gaiascan_l135.0_b66.4_ra185.4_dec50.0.h5',
-     './gaia_data/gd1/gaiascan_l165.0_b66.4_ra171.4_dec43.0.h5',    
+     './gaia_data/gd1/gaiascan_l105.0_b66.4_ra203.7_dec49.1.npy',
+     './gaia_data/gd1/gaiascan_l135.0_b66.4_ra185.4_dec50.0.npy',
+     './gaia_data/gd1/gaiascan_l165.0_b66.4_ra171.4_dec43.0.npy',    
     ]
 
     ## Scan over patches
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     n_patches = args.n_patches
 
     def train_on_patch(patch_id):
-        df = pd.read_hdf(patch_list[patch_id])
+        df = load_file(patch_list[patch_id])
         
         if args.train_after_cuts:
             df = fiducial_cuts(df)
