@@ -4,11 +4,13 @@ from functions import *
 from models import *
 import tensorflow as tf
 from livelossplot import PlotLossesKeras
-os.environ["CUDA_VISIBLE_DEVICES"] = "2" # pick a number < 4 on ML4HEP; < 3 on Voltan 
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 import random
+
+n_streams = 100
 mock_streams = glob("gaia_data/mock_streams/gaiamock_*.npy")
 selected_streams = random.sample(mock_streams, n_streams)
 
@@ -24,7 +26,6 @@ for file in tqdm(selected_streams):
     df['stream'] = df['stream'].astype(bool)
 
     make_plots(df, save_folder = save_folder)
-
     df_slice = signal_sideband(df, save_folder = save_folder, sr_factor=0.25, sb_factor=0.5)
 
     tf.keras.backend.clear_session()
