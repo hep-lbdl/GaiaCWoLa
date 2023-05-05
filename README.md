@@ -1,4 +1,4 @@
-# GaiaCWoLa
+# Weakly-Supervised Anomaly Detection in the Milky Way
 
 ### Repository structure 
 ```sh
