@@ -1,5 +1,15 @@
 # Weakly-Supervised Anomaly Detection in the Milky Way 🌌
 
+### Quickstart 
+Make sure you have `conda` installed on your system. 
+```sh
+conda env create -n gaia -f requirements.yml
+conda activate gaia
+python -m ipykernel install --user --name gaia --display-name "gaia"
+jupyter lab
+```
+Then, navigate to one of the notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
+
 ### Repository structure 
 ```sh
 python
@@ -11,16 +21,6 @@ notebooks
 ├── example.ipynb # shows how to run CWoLa on a simulated stream and a real patch of GD-1
 └── make_plots.ipynb # shows how to replicate each of the figures in the paper
 ```
-
-### Quickstart 
-Make sure you have `conda` installed on your system. 
-```sh
-conda env create -n gaia -f requirements.yml
-conda activate gaia
-python -m ipykernel install --user --name gaia --display-name "gaia"
-jupyter lab
-```
-Then, navigate to one of the notebooks in the `notebooks` folder (making sure to specify `gaia` as your kernel).
 
 ### Datasets 
 - [Datasets needed to run notebooks/make_plots.ipynb]() 
