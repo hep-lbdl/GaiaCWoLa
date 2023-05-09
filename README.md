@@ -1,5 +1,7 @@
 # Weakly-Supervised Anomaly Detection in the Milky Way 🌌
 
+This is the companion code for https://arxiv.org/abs/2305.03761. 
+
 ### Quickstart 
 This package uses Python 3.8 and Keras 2.9.
 
