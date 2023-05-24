@@ -1,5 +1,7 @@
 # Weakly-Supervised Anomaly Detection in the Milky Way 🌌
 
+This is the companion code for https://arxiv.org/abs/2305.03761. 
+
 ### Quickstart 
 This package uses Python 3.8 and Keras 2.9.
 
@@ -25,8 +27,8 @@ notebooks
 ```
 
 ### Datasets 
-- [Datasets needed to run notebooks/make_plots.ipynb]() 
-- [Full 21 patches of GD-1](https://zenodo.org/record/7897936#.ZFUQU-zMJqs)
+- [Datasets needed to run notebooks/make_plots.ipynb](https://doi.org/10.5281/zenodo.7897839) 
+- [Full 21 patches of GD-1](https://doi.org/10.5281/zenodo.7897935)
 
 ### Further reading: 
 - [CWoLa Paper](https://arxiv.org/abs/1708.02949)
