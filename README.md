@@ -7,7 +7,7 @@ This package uses Python 3.8 and Keras 2.9.
 
 Make sure you have `conda` installed on your system. 
 ```sh
-conda env create -n gaia -f requirements.yml # can also use requirements_no_builds.yml
+conda env create -n gaia -f requirements.yml # can also use requirements_mac.yml
 conda activate gaia
 python -m ipykernel install --user --name gaia --display-name "gaia"
 jupyter lab
