@@ -1,5 +1,6 @@
 name: gaia
 channels:
+  - apple
   - conda-forge
 dependencies:
     - python=3.10
@@ -19,7 +20,8 @@ dependencies:
     - boto3
     - ipykernel
     - pip:
-        - tensorflow_gpu
+        - tensorflow-macos
+        - tensorflow-metal
         - bayesian-optimization
         - gym
         - kaggle
